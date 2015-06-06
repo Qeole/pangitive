@@ -1,25 +1,29 @@
-      <?fugitive include:top.html ?>
       <article>
         <header>
-          <h1><a href="<?fugitive article_file ?>.html">
-              <?fugitive article_title ?>
+          <h1><a href="$article$.html">
+            $title$
           </a></h1>
         </header>
         <footer>
-          by <?fugitive article_cauthor ?>, on
-          <time datetime="<?fugitive article_cdatetime_html5 ?>">
-            <?fugitive article_cdate ?> at <?fugitive article_ctime ?>
+          by $article-cauthor-email$,
+          on
+          <time datetime="$article-cdate-html5$">
+            $article-cdate-day$ at $article-cdate-time$
           </time>
-          <?fugitive ifset:article_mdatetime ?>
-          <br /><small>last update by <?fugitive article_mauthor ?>, on
-            <time datetime="<?fugitive article_mdatetime_html5 ?>">
-              <?fugitive article_mdate ?> at <?fugitive article_mtime ?>
+$if(article-mdate)$
+          <br /><small>last update by
+            $article-mauthor-email$,
+            on
+            <time datetime="$article-mdate-html5$">
+              $article-mdate-day$ at $article-mdate-time$
             </time>
           </small>
-          <?fugitive endifset:article_mdatetime ?>
+$endif$
         </footer>
         <div>
-          <?fugitive article_content ?>
+<!-- Indeting body breaks <pre></pre> blocs -->
+<!-- Content: start -->
+$body$
+<!-- Content: end -->
         </div>
       </article>
-      <?fugitive include:bottom.html ?>

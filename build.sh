@@ -1,8 +1,8 @@
 #!/bin/bash
 
 include_file() {
-  f=`echo -n $2 | sed 's/\//\\\\\//g'`
-  tmp=`mktemp fugitiveXXXXXX`
+  f=`echo -n $2 | sed 's#\/#\\\\\/#g'`
+  tmp=`mktemp pangitiveXXXXXX`
   cat "$2" | gzip | base64 > "$tmp"
   cat "$1" | sed "/#INCLUDE:$f#/ {
     r $tmp
@@ -11,13 +11,13 @@ include_file() {
   rm "$tmp"
 }
 
-cp install.sh tmp1
+cp install.sh pangitive_tmp1
 i=1
-for f in README.html *-*.sh default-files/*; do
+for f in README.md *-*.sh default-files/*; do
   j=$((1 - i))
-  include_file tmp$i "$f" > tmp$j
+  include_file pangitive_tmp$i "$f" > pangitive_tmp$j
   i=$j
 done
-cp tmp$j fugitive
-chmod +x fugitive
-rm tmp0 tmp1
+cp pangitive_tmp$j pangitive
+chmod +x pangitive
+rm pangitive_tmp0 pangitive_tmp1

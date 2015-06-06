@@ -1,16 +1,24 @@
-blog_url=`git config --get fugitive.blog-url`
+blog_url=`git config --get pangitive.blog-url`
 if [ "$blog_url" = "" ]; then
-  echo -n "[fugitive] WARNING: git config fugitive.blog-url is empty and "
+  echo -n "[pangitive] WARNING: git config pangitive.blog-url is empty and "
   echo "should not be, please set it as soon as possible."
 fi
-templates_dir=`git config --get fugitive.templates-dir`
-public_dir=`git config --get fugitive.public-dir`
+blog_owner=`git config --get pangitive.blog-owner`
+blog_title=`git config --get pangitive.blog-title`
+blog_years=`git log --format='%ai' | \
+  sed -n '1{s/-.*//;h};${G;s/\(-.*\)\?\n/−/;s/^\(.*\)−\1$/\1/;p}'`
+templates_dir=`git config --get pangitive.templates-dir`
+public_dir=`git config --get pangitive.public-dir`
 if [ ! -d "$public_dir" ]; then mkdir -p "$public_dir"; fi
-articles_dir=`git config --get fugitive.articles-dir`
-pages_dir=`git config --get fugitive.pages-dir`
-preproc=`git config --get fugitive.preproc`
-if [ "$preproc" = "" ]; then preproc="cat"; fi
+articles_dir=`git config --get pangitive.articles-dir`
+pages_dir=`git config --get pangitive.pages-dir`
+pandoc=`git config --get pangitive.pandoc`
+pandoc_opt=`git config --get pangitive.pandoc-options`
+if [ ! -f "$pandoc" -o ! -x "$pandoc" ]; then
+  echo "Cannot access pandoc executable. Aborting." && exit
+fi
 
+# If template changed, regenerate all articles
 tpl_change=`echo "$added_files" "$modified_files" "$deleted_files" | \
   grep -c "$templates_dir/"`
 if [ "$tpl_change" -gt 0 ]; then
@@ -18,21 +26,22 @@ if [ "$tpl_change" -gt 0 ]; then
   modified_files=`git log $first..HEAD^ --name-status --pretty="format:" | \
     grep -E '^A' | cut -f2 | sort | uniq`
   deleted_files=
-  tmpust=`mktemp fugitiveXXXXXX`
-  tmpart=`mktemp fugitiveXXXXXX`
-  tmpmod=`mktemp fugitiveXXXXXX`
+  tmpust=`mktemp pangitiveXXXXXX`
+  tmpart=`mktemp pangitiveXXXXXX`
+  tmpmod=`mktemp pangitiveXXXXXX`
   ls "$articles_dir"/* > "$tmpust"
   ls "$pages_dir"/* >> "$tmpust"
   sort "$tmpust" > "$tmpart"
   echo "$modified_files" | tr " " "\n" > "$tmpmod"
   modified_files=`comm -12 --nocheck-order "$tmpmod" "$tmpart"`
   rm "$tmpust" "$tmpart" "$tmpmod"
-  echo "[fugitive] Templates changed, regenerating everything..."
+  echo "[pangitive] Templates changed, regenerating everything..."
 fi
 
-generated_files=`mktemp fugitiveXXXXXX`
+generated_files=`mktemp pangitiveXXXXXX`
 
-articles_sorted=`mktemp fugitiveXXXXXX`
+# List of articles (base names), sorted by time stamp, one per line
+articles_sorted=`mktemp pangitiveXXXXXX`
 for f in "$articles_dir"/*; do
   ts=`git log --format="%at" -- "$f" | tail -1`
   if [ "$ts" != "" ]; then
@@ -41,10 +50,11 @@ for f in "$articles_dir"/*; do
 done | sort -k1,1nr | cut -d' ' -f2 > "$articles_sorted"
 
 if [ "`head -1 $articles_sorted`" = "" ]; then
-  echo "[fugitive] WARNING: there's no article, errors may occur." >&2
+  echo "[pangitive] WARNING: there's no article, errors may occur." >&2
 fi
 
-articles_sorted_with_delete=`mktemp fugitiveXXXXXX`
+# List of articles including deleted ones
+articles_sorted_with_delete=`mktemp pangitiveXXXXXX`
 for f in "$articles_dir"/* $deleted_files; do
   ts=`git log --format="%at" -- "$f" | tail -1`
   if [ "$ts" != "" ]; then
@@ -52,7 +62,7 @@ for f in "$articles_dir"/* $deleted_files; do
   fi
 done | sort -k1,1nr | cut -d' ' -f2 > "$articles_sorted_with_delete"
 
-commits=`mktemp fugitiveXXXXXX`
+commits=`mktemp pangitiveXXXXXX`
 git log --oneline | cut -d' ' -f1 > "$commits"
 
 get_article_info() {
@@ -84,20 +94,14 @@ get_deleted_previous_file() {
 }
 get_article_title() {
   if [ "$2" != "" ]; then
-    head -1 "$1/$2"
+    sed -n 's/^\s*title\s*:\s*\(.*\)/\1/p;T;q' "$1/$2" | sed "s/^'\(.*\)'$/\1/"
   fi
 }
-get_article_content() {
-  tmp=`mktemp fugitiveXXXXXX`
-  tail -n+2 "$1/$2" | ($preproc) > "$tmp"
-  echo "$tmp"
-}
-
 get_commit_info() {
   git show -s --format="$1" "$2"
 }
 get_commit_body() {
-  tmp=`mktemp fugitiveXXXXXX`
+  tmp=`mktemp pangitiveXXXXXX`
   git show -s --format="%b" "$1" > "$tmp"
   if [ "`cat \"$tmp\" | sed \"/^$/d\" | wc -l`" != "0" ]; then
     echo "$tmp"
@@ -106,239 +110,268 @@ get_commit_body() {
   fi
 }
 
-sanit_mail() {
-  sed "s/@/[at]/;s/\./(dot)/"
-}
-
-replace_condition() {
-  if [ "$2" = "" ]; then
-    sed "s/<?fugitive[[:space:]]\+\(end\)\?ifset:$1[[:space:]]*?>/\n\0\n/g" | \
-      sed "/<?fugitive[[:space:]]\+ifset:$1[[:space:]]*?>/,/<?fugitive[[:space:]]\+endifset:$1[[:space:]]*?>/bdel
-        b
-        :del
-        s/<?fugitive[[:space:]]\+endifset:$1[[:space:]]*?>.*//
-        /<?fugitive[[:space:]]\+endifset:$1[[:space:]]*?>/b
-        d"
-  else
-    sed "s/<?fugitive[[:space:]]\+\(end\)\?ifset:$1[[:space:]]*?>//"
-  fi
-}
-
-replace_str() {
-  esc=`echo "$2" | sed 's/\//\\\\\//g;s/&/\\\&/g'`
-  replace_condition "$1" "$2" | \
-    sed "s/<?fugitive[[:space:]]\+$1[[:space:]]*?>/$esc/g"
-}
-
-# REMEMBER: 2nd arg should be a tempfile!
-replace_file() {
-  if [ -f "$2" ]; then
-    sed "s/<?fugitive[[:space:]]\+$1[[:space:]]*?>/\n\0\n/g" | \
-      sed "/<?fugitive[[:space:]]\+$1[[:space:]]*?>/ {
-        r $2
-        d }"
-    rm "$2"
-  else
-    cat
-  fi
-}
-
-replace_includes() {
-  buf=`mktemp fugitiveXXXXXX`
-  buf2=`mktemp fugitiveXXXXXX`
-  cat > "$buf"
-  includes=`cat "$buf" | \
-    sed "s/<?fugitive[[:space:]]\+include:.\+[[:space:]]*?>/\n\0\n/g" | \
-    grep -E "<\?fugitive[[:space:]]+include:.+[[:space:]]*\?>" | \
-    sed "s/^<?fugitive[[:space:]]\+include://;s/[[:space:]]*?>$//"`
-  for i in $includes; do
-    esc=`echo -n $i | sed 's/\//\\\\\//g'`
-    inc="$templates_dir/$i"
-    cat "$buf" | \
-      sed "/<?fugitive[[:space:]]\+include:$esc[[:space:]]*?>/ {
-        r $inc
-        d
-        }" > "$buf2"
-    tmpbuf="$buf"
-    buf="$buf2"
-    buf2="$tmpbuf"
+# Used with following function to obfuscate emails for bots
+obfuscate_string(){
+  i=1;
+  while [ $i -le ${#1} ] ; do
+    l=`echo -n "$1" | cut -c$i`
+    # pandoc does not do exactly the same here, it has another algorithm to
+    # switch between decimal and hexadecimal notation (don't know what it is)
+    if [ $((i/2*2)) -eq $i ] ; then
+      printf '&#%d;' \'"$l"
+    else
+      printf '&#x%x;' \'"$l"
+    fi
+    i=$((i+1))
   done
-  cat "$buf"
-  rm "$buf" "$buf2"
 }
 
-replace_commit_info() {
-  commit_Hash=`get_commit_info "%H" "$1"`
-  commit_hash=`get_commit_info "%h" "$1"`
-  commit_author=`get_commit_info "%an" "$1"`
-  commit_author_email=`get_commit_info "%ae" "$1" | sanit_mail`
-  commit_datetime=`get_commit_info "%ai" "$1"`
-  commit_datetime_html5=`echo "$commit_datetime" | \
-    sed "s/ /T/;s/ \(+\|-\)\([0-9][0-9]\)/\1\2:/"`
-  commit_date=`echo $commit_datetime | cut -d' ' -f1`
-  commit_time=`echo $commit_datetime | cut -d' ' -f2`
-  commit_timestamp=`get_commit_info "%at" "$1"`
-  commit_subject=`get_commit_info "%s" "$1"`
-  commit_slug=`get_commit_info "%f" "$1"`
-  commit_body=`get_commit_body "$1"`
-
-  replace_str "commit_Hash" "$commit_Hash" | \
-    replace_str "commit_hash" "$commit_hash" | \
-    replace_str "commit_author" "$commit_author" | \
-    replace_str "commit_author_email" "$commit_author_email" | \
-    replace_str "commit_datetime" "$commit_datetime" | \
-    replace_str "commit_datetime_html5" "$commit_datetime_html5" | \
-    replace_str "commit_date" "$commit_date" | \
-    replace_str "commit_time" "$commit_time" | \
-    replace_str "commit_timestamp" "$commit_timestamp" | \
-    replace_str "commit_subject" "$commit_subject" | \
-    replace_str "commit_slug" "$commit_slug" | \
-    replace_file "commit_body" "$commit_body"
+# Obfuscate emails, pandoc style (more or less)
+sanit_mail() {
+  nn=`echo $1 | cut -d@ -f1`
+  hh=`echo $1 | cut -d@ -f2`
+  n=`obfuscate_string "$nn"`
+  a='&#64;'
+  h=`obfuscate_string "$hh"`
+  if [ "$2" != "" ] ; then
+    text="$2"
+    noscript_mail="$2"
+  else
+    text="'+e+'"
+    n_ns=`echo "$nn" | sed 's/\./ dot /g'`
+    n_ns=`obfuscate_string "$n_ns"`
+    a_ns=`obfuscate_string ' at '`
+    h_ns=`echo "$hh" | sed 's/\./ dot /g'`
+    h_ns=`obfuscate_string "$h_ns"`
+    noscript_mail="$n_ns$a_ns$h_ns"
+  fi
+  echo '<script type="text/javascript">'
+  echo '<!--'
+  echo 'h="'$h'";a="'$a'";n="'$n'";e=n+a+h;'
+  echo 'document.write("<a h"+"ref"+"=\"ma"+"ilto"+":"+e+"\">'$text\
+'<\/"+"a"+">");'
+  echo "// -->"
+  echo "</script><noscript>$noscript_mail</noscript>"
 }
 
-replace_article_info() {
-  article_title=`get_article_title "$1" "$2"`
-  article_cdatetime=`get_article_info "%ai" "$1" "$2" | tail -1`
-  article_cdatetime_html5=`echo "$article_cdatetime" | \
-    sed "s/ /T/;s/ \(+\|-\)\([0-9][0-9]\)/\1\2:/"`
-  article_cdate=`echo "$article_cdatetime" | cut -d' ' -f1`
-  article_ctime=`echo "$article_cdatetime" | cut -d' ' -f2`
-  article_ctimestamp=`get_article_info "%at" "$1" "$2" | tail -1`
+# Declare global variables
+commit_Hash=""
+commit_hash=""
+commit_author=""
+commit_author_email=""
+commit_date=""
+commit_date_html5=""
+commit_date_day=""
+commit_date_time=""
+commit_timestamp=""
+commit_comment=""
+commit_slug=""
+commit_body=""
+
+# Load variables to directly feed pandoc with
+load_commit_info() {
+  commit_Hash="--variable=commit-Hash:`get_commit_info '%H' \"$1\"`"
+  commit_hash="--variable=commit-hash:`get_commit_info '%h' \"$1\"`"
+  author_name=`get_commit_info '%an' "$1"`
+  author_email=`get_commit_info '%ae' "$1"`
+  commit_author="--variable=commit-author:$author_name"
+  commit_author_email="--variable=commit-author-email:`sanit_mail \
+    \"$author_email\" \"$author_name\"`"
+  datetime=`get_commit_info '%ai' "$1"`
+  commit_date="--variable=commit-date:$datetime"
+  commit_date_html5="--variable=commit-date-html5:`echo \"$datetime\" | \
+    sed 's/ /T/;s/ \(+\|-\)\([0-9][0-9]\)/\1\2:/'`"
+  commit_date_day="--variable=commit-date-day:`echo $datetime | cut -d' ' -f1`"
+  commit_date_time="--variable=commit-date-time:`echo $datetime | \
+    cut -d' ' -f2`"
+  commit_timestamp="--variable=commit-timestamp:`get_commit_info '%at' \"$1\"`"
+  commit_comment="--variable=commit-comment:`get_commit_info '%s' \"$1\"`"
+  commit_slug="--variable=commit-slug:`get_commit_info '%f' \"$1\"`"
+  commit_body="--variable=commit-body:`get_commit_body \"$1\"`"
+}
+
+# Declare global variables
+article_file=""
+article_title=""
+article_cdate=""
+article_cdate_html5=""
+article_cdate_day=""
+article_cdate_time=""
+article_ctimestamp=""
+article_mdate=""
+article_mdate_html5=""
+article_mdate_day=""
+article_mdate_time=""
+article_mtimestamp=""
+article_author=""
+article_cauthor=""
+article_cauthor_email=""
+article_mauthor=""
+article_mauthor_email=""
+article_previous=""
+article_previous_title=""
+article_next=""
+article_next_title=""
+article_centent=""
+
+# Load variables to directly feed pandoc with
+load_article_info() {
+  article_file="--variable=article-file:$2"
+  article_title="--variable=article-title:`get_article_title \"$1\" \"$2\"`"
+  cdatetime=`get_article_info '%ai' "$1" "$2" | tail -1`
+  article_cdate="--variable=article-cdate:$cdatetime"
+  article_cdate_html5="--variable=article-cdate-html5:`echo \"$cdatetime\" | \
+    sed 's/ /T/;s/ \(+\|-\)\([0-9][0-9]\)/\1\2:/'`"
+  article_cdate_day="--variable=article-cdate-day:`echo \"$cdatetime\" | \
+    cut -d' ' -f1`"
+  article_cdate_time="--variable=article-cdate-time:`echo \"$cdatetime\" | \
+    cut -d' ' -f2`"
+  article_ctimestamp="--variable=article-ctimestamp:`get_article_info \
+    '%at' \"$1\" \"$2\" | tail -1`"
   u=`get_article_info "%ai" "$1" "$2" | wc -l`
-  article_mdatetime=`if test "$u" -gt 1; then get_article_info "%ai" "$1" "$2" | \
+  mdatetime=`if test "$u" -gt 1; then get_article_info '%ai' "$1" "$2" | \
     head -1; fi`
-  article_mdatetime_html5=`echo "$article_mdatetime" | \
-    sed "s/ /T/;s/ \(+\|-\)\([0-9][0-9]\)/\1\2:/"`
-  article_mdate=`echo "$article_mdatetime" | cut -d' ' -f1`
-  article_mtime=`echo "$article_mdatetime" | cut -d' ' -f2`
-  article_mtimestamp=`if test "$u" -gt 1; then get_article_info "%at" \
-    "$1" "$2" | head -1; fi`
-  article_cauthor=`get_article_info "%an" "$1" "$2" | tail -1`
-  article_cauthor_email=`get_article_info "%ae" "$1" "$2" | tail -1 | sanit_mail`
-  article_mauthor=`get_article_info "%an" "$1" "$2" | head -1`
-  article_mauthor_email=`get_article_info "%ae" "$1" "$2" | head -1 | sanit_mail`
-
+  article_mdate="--variable=article-mdate:$mdatetime"
+  article_mdate_html5="--variable=article-mdate-html5:`echo \"$mdatetime\" | \
+    sed 's/ /T/;s/ \(+\|-\)\([0-9][0-9]\)/\1\2:/'`"
+  article_mdate_day="--variable=article-mdate-day:`echo \"$mdatetime\" | \
+    cut -d' ' -f1`"
+  article_mdate_time="--variable=article-mdate-time:`echo \"$mdatetime\" | \
+    cut -d' ' -f2`"
+  article_mtimestamp="--variable=article-mtimestamp:`if test \"$u\" -gt 1; \
+    then get_article_info '%at' \"$1\" \"$2\" | head -1; fi`"
+  tmp_cauthor=`get_article_info '%an' "$1" "$2" | tail -1`
+  tmp_cauthor_email=`get_article_info '%ae' "$1" "$2" | tail -1`
+  article_author="--variable=author:$tmp_cauthor"
+  article_cauthor="--variable=article-cauthor:$tmp_cauthor"
+  article_cauthor_email="--variable=article-cauthor-email:`sanit_mail \
+    \"$tmp_cauthor_email\" \"$tmp_cauthor\"`"
+  tmp_mauthor=`get_article_info '%an' "$1" "$2" | head -1`
+  tmp_mauthor_email=`get_article_info '%ae' "$1" "$2" | head -1`
+  article_mauthor="--variable=article-mauthor:$tmp_mauthor"
+  article_mauthor_email="--variable=article-mauthor-email:`sanit_mail \
+    \"$tmp_mauthor_email\" \"$tmp_mauthor\"`"
   if [ "$1" != "$pages_dir" ]; then
-    article_previous_file=`get_article_previous_file "$2"`
-    article_previous_title=`get_article_title "$1" "$article_previous_file"`
-    article_next_file=`get_article_next_file "$2"`
-    article_next_title=`get_article_title "$1" "$article_next_file"`
-
-    replace_file "article_content" "`get_article_content \"$1\" \"$2\"`" | \
-      replace_str "article_file" "$2" | \
-      replace_str "article_title" "$article_title" | \
-      replace_str "article_cdatetime" "$article_cdatetime" | \
-      replace_str "article_cdatetime_html5" "$article_cdatetime_html5" | \
-      replace_str "article_cdate" "$article_cdate" | \
-      replace_str "article_ctime" "$article_ctime" | \
-      replace_str "article_ctimestamp" "$article_ctimestamp" | \
-      replace_str "article_mdatetime" "$article_mdatetime" | \
-      replace_str "article_mdatetime_html5" "$article_mdatetime_html5" | \
-      replace_str "article_mdate" "$article_mdate" | \
-      replace_str "article_mtime" "$article_mtime" | \
-      replace_str "article_mtimestamp" "$article_mtimestamp" | \
-      replace_str "article_cauthor" "$article_cauthor" | \
-      replace_str "article_cauthor_email" "$article_cauthor_email" | \
-      replace_str "article_mauthor" "$article_mauthor" | \
-      replace_str "article_mauthor_email" "$article_mauthor_email" | \
-      replace_str "article_previous_file" "$article_previous_file" | \
-      replace_str "article_previous_title" "$article_previous_title" | \
-      replace_str "article_next_file" "$article_next_file" | \
-      replace_str "article_next_title" "$article_next_title"
-  else
-    replace_file "article_content" "`get_article_content \"$1\" \"$2\"`" | \
-      replace_str "article_file" "" | \
-      replace_str "article_title" "$article_title" | \
-      replace_str "article_cdatetime" "$article_cdatetime" | \
-      replace_str "article_cdatetime_html5" "$article_cdatetime_html5" | \
-      replace_str "article_cdate" "$article_cdate" | \
-      replace_str "article_ctime" "$article_ctime" | \
-      replace_str "article_ctimestamp" "$article_ctimestamp" | \
-      replace_str "article_mdatetime" "$article_mdatetime" | \
-      replace_str "article_mdatetime_html5" "$article_mdatetime_html5" | \
-      replace_str "article_mdate" "$article_mdate" | \
-      replace_str "article_mtime" "$article_mtime" | \
-      replace_str "article_mtimestamp" "$article_mtimestamp" | \
-      replace_str "article_cauthor" "$article_cauthor" | \
-      replace_str "article_cauthor_email" "$article_cauthor_email" | \
-      replace_str "article_mauthor" "$article_mauthor" | \
-      replace_str "article_mauthor_email" "$article_mauthor_email"
+    previous_file=`get_article_previous_file "$2"`
+    article_previous="--variable=article-previous:$previous_file"
+    article_previous_title="--variable=article-previous-title:`\
+      get_article_title \"$1\" \"$previous_file\"`"
+    next_file=`get_article_next_file "$2"`
+    article_next="--variable=article-next:$next_file"
+    article_next_title="--variable=article-next-title:`get_article_title \
+      \"$1\" \"$next_file\"`"
+  else # don't keep remnant data from previous generated file in global vars
+    article_previous="--variable=deactivated"
+    article_previous_title="--variable=deactivated"
+    article_next="--variable=deactivated"
+    article_next_title="--variable=deactivated"
   fi
 }
 
-replace_empty_article_info() {
-  replace_str "article_file" "" | \
-    replace_str "article_title" "" | \
-    replace_str "article_cdatetime" "" | \
-    replace_str "article_cdate" "" | \
-    replace_str "article_ctime" "" | \
-    replace_str "article_ctimestamp" "" | \
-    replace_str "article_mdatetime" "" | \
-    replace_str "article_mdate" "" | \
-    replace_str "article_mtime" "" | \
-    replace_str "article_mtimestamp" "" | \
-    replace_str "article_cauthor" "" | \
-    replace_str "article_cauthor_email" "" | \
-    replace_str "article_mauthor" "" | \
-    replace_str "article_mauthor_email" "" | \
-    replace_str "article_previous_file" "" | \
-    replace_str "article_previous_title" "" | \
-    replace_str "article_next_file" "" | \
-    replace_str "article_next_title" ""
+# Processing body of the article, without any template
+get_article_content() {
+  $pandoc --smart --from=markdown --to=html "$1" | tr '\n' ' '
 }
 
-replace_foreach () {
-  foreach_body=`mktemp fugitiveXXXXXX`
-  tmpfile=`mktemp fugitiveXXXXXX`
-  temp=`mktemp fugitiveXXXXXX`
-  fe="foreach:$1"
-  cat > "$temp"
-  cat "$temp" | \
-    sed -n "/<?fugitive[[:space:]]\+$fe[[:space:]]*?>/,/<?fugitive[[:space:]]\+end$fe[[:space:]]*?>/p" | \
-    tail -n +2 | head -n -1 > "$foreach_body"
-  if [ ! -s "$foreach_body" ]; then
-    cat "$temp"
-    rm "$foreach_body" "$tmpfile" "$temp"
-    return
-  fi
-  cat "$temp" | \
-  sed "s/<?fugitive[[:space:]]\+$fe[[:space:]]*?>/<?fugitive foreach_body ?>\n\0/" | \
-    sed "/<?fugitive[[:space:]]\+$fe[[:space:]]*?>/,/<?fugitive[[:space:]]\+end$fe[[:space:]]*?>/d" | \
-    cat > "$tmpfile"
-  if [ "$1" = "article" ]; then
-    for i in `cat "$2"`; do
-      cat "$foreach_body" | replace_article_info "$articles_dir" "$i"
-    done > "$temp"
-  else
-    for i in `cat "$2"`; do
-      cat "$foreach_body" | replace_$1_info "$i"
-    done > "$temp"
-  fi
-  cat "$tmpfile" | replace_file "foreach_body" "$temp"
-  rm "$foreach_body" "$tmpfile"
+generate_archives() {
+  tmpfile=$2
+  echo '---' > "$tmpfile"
+  echo 'article:' >> "$tmpfile"
+  for i in `cat "$1"`; do
+    load_article_info "$articles_dir" "$i"
+    echo $article_file | \
+      sed "s/--variable=article-\([^:]*\):\(.*\)/  - \1: '\2'/" >> "$tmpfile"
+    for j in \
+      "$article_title" \
+      "$article_cdate" \
+      "$article_cdate_html5" \
+      "$article_cdate_day" \
+      "$article_cdate_time" \
+      "$article_ctimestamp" \
+      "$article_mdate" \
+      "$article_mdate_html5" \
+      "$article_mdate_day" \
+      "$article_mdate_time" \
+      "$article_mtimestamp" \
+      "$article_cauthor" \
+      "$article_cauthor_email" \
+      "$article_mauthor" \
+      "$article_mauthor_email" \
+      "$article_previous" \
+      "$article_previous_title" \
+      "$article_next" \
+      "$article_next_title"; do
+      echo $j | \
+        sed "s/--variable=article-\([^:]*\):\(.*\)/    \1: '\2'/" >> "$tmpfile"
+    done
+    if [ "$3" != "" ]; then # If anything provided as third arg, add content
+      echo -n "    content: '" >> "$tmpfile"
+      # Enclose in quotes in case it contains a colon; change inner quotes
+      # into curly quotes so as to preserve outer enclosing
+      get_article_content "$articles_dir/$i"  | sed "s/'/’/g" >> "$tmpfile"
+      echo "'" >> "$tmpfile"
+    fi
+  done
+  echo '---' >> "$tmpfile"
 }
 
 generate_article() {
-  temp=`mktemp fugitiveXXXXXX`
+  temp=`mktemp pangitiveXXXXXX`
   chmod a+r "$temp"
   if [ "$1" != "${1#$articles_dir}" ]; then
     art="${1#$articles_dir/}"
     dir=$articles_dir
-    tpl="article.html"
+    tpl="tpl.html"
   elif [ "$f" != "${1#$pages_dir}" ]; then
     art="${1#$pages_dir/}"
     dir=$pages_dir
-    tpl="article.html"
+    tpl="tpl.html"
   fi
   if [ "$art" != "" ]; then
     title=`get_article_title "$dir" "$art"`
-    cat "$templates_dir/$tpl" | \
-      replace_includes | \
-      replace_str "page_title" "$title" | \
-      replace_str "blog_url" "$blog_url" | \
-      replace_commit_info "-1" | \
-      replace_article_info "$dir" "$art" | \
-      sed "/^[[:space:]]*$/d" > "$temp"
+    load_commit_info "-1"
+    load_article_info "$dir" "$art"
+    $pandoc $pandoc_opt \
+      --variable=pagetitle:"$title" \
+      --variable=blog-url:"$blog_url" \
+      --variable=blog-owner:"$blog_owner" \
+      --variable=blog-title:"$blog_title" \
+      --variable=blog-years:"$blog_years" \
+      --template="$templates_dir/article.html" \
+      "$commit_Hash" \
+      "$commit_hash" \
+      "$commit_author" \
+      "$commit_author_email" \
+      "$commit_date" \
+      "$commit_date_html5" \
+      "$commit_date_day" \
+      "$commit_date_time" \
+      "$commit_timestamp" \
+      "$commit_comment" \
+      "$commit_slug" \
+      "$commit_body" \
+      "$article_file" \
+      "$article_title" \
+      "$article_cdate" \
+      "$article_cdate_html5" \
+      "$article_cdate_day" \
+      "$article_cdate_time" \
+      "$article_ctimestamp" \
+      "$article_mdate" \
+      "$article_mdate_html5" \
+      "$article_mdate_day" \
+      "$article_mdate_time" \
+      "$article_mtimestamp" \
+      "$article_author" \
+      "$article_cauthor" \
+      "$article_cauthor_email" \
+      "$article_mauthor" \
+      "$article_mauthor_email" \
+      "$article_previous" \
+      "$article_previous_title" \
+      "$article_next" \
+      "$article_next_title" \
+      "$1" > "$temp"
     mv "$temp" "$public_dir/$art.html"
   fi
 }
@@ -346,7 +379,7 @@ generate_article() {
 regenerate_previous_and_next_article_maybe() {
   if [ "$1" != "" -a \
        "`grep -c \"^$1$\" \"$generated_files\"`" = "0" ]; then
-    echo -n "[fugitive] Regenerating $public_dir/$1.html"
+    echo -n "[pangitive] Regenerating $public_dir/$1.html"
     echo -n " (as previous article) from $articles_dir/$1... "
     generate_article "$articles_dir/$1"
     echo "done."
@@ -354,7 +387,7 @@ regenerate_previous_and_next_article_maybe() {
   fi
   if [ "$2" != "" -a \
        "`grep -c \"^$2$\" \"$generated_files\"`" = "0" ]; then
-    echo -n "[fugitive] Regenerating $public_dir/$2.html"
+    echo -n "[pangitive] Regenerating $public_dir/$2.html"
     echo -n " (as next article) from $articles_dir/$2... "
     generate_article "$articles_dir/$2"
     echo "done."
@@ -363,7 +396,7 @@ regenerate_previous_and_next_article_maybe() {
 }
 
 modification=0
-
+# Generate / regen added or modified files
 for f in $added_files $modified_files; do
   art=""
   if [ "$f" != "${f#$articles_dir}" ]; then
@@ -373,7 +406,7 @@ for f in $added_files $modified_files; do
     art="${f#$pages_dir/}"
   fi
   if [ "$art" != "" ]; then
-    echo -n "[fugitive] Generating $public_dir/${art}.html from"
+    echo -n "[pangitive] Generating $public_dir/${art}.html from"
     echo -n " $f... "
     generate_article "$f"
     echo "done."
@@ -381,6 +414,7 @@ for f in $added_files $modified_files; do
   fi
 done
 
+# Update links to next and previous articles
 for f in $added_files; do
   art=""
   if [ "$f" != "${f#$articles_dir}" ]; then
@@ -389,9 +423,11 @@ for f in $added_files; do
     art="${f#$pages_dir/}"
   fi
   if [ "$art" != "" ]; then
-    echo -n "[fugitive] Adding $public_dir/$art.html to git ignore list... "
-    echo "$public_dir/$art.html" >> .git/info/exclude
-    echo "done."
+    if [ "$preview" = "" ]; then
+      echo -n "[pangitive] Adding $public_dir/$art.html to git ignore list... "
+      echo "$public_dir/$art.html" >> .git/info/exclude
+      echo "done."
+    fi;
     if [ "$f" != "${f#$articles_dir}" ]; then
       previous=`get_article_previous_file "$art"`
       next=`get_article_next_file "$art"`
@@ -400,64 +436,92 @@ for f in $added_files; do
   fi
 done
 
-for f in $deleted_files; do
-  art=""
-  if [ "$f" != "${f#$articles_dir}" ]; then
-    art="${f#$articles_dir/}"
-    modification=$((modification + 1))
-  elif [ "$f" != "${f#$pages_dir}" ]; then
-    art="${f#$pages_dir/}"
-  fi
-  if [ "$art" != "" ]; then
-    echo -n "[fugitive] Deleting $public_dir/$art.html... "
-    rm "$public_dir/$art.html"
-    echo "done."
-    echo -n "[fugitive] Removing $art.html from git ignore list... "
-    sed -i "/^$public_dir\/$art.html$/d" .git/info/exclude
-    echo "done."
+if [ "$preview" = "" ]; then
+  # Delete removed articles and update links
+  for f in $deleted_files; do
+    art=""
     if [ "$f" != "${f#$articles_dir}" ]; then
-      previous=`get_deleted_previous_file "$art"`
-      next=`get_deleted_next_file "$art"`
-      regenerate_previous_and_next_article_maybe "$previous" "$next"
+      art="${f#$articles_dir/}"
+      modification=$((modification + 1))
+    elif [ "$f" != "${f#$pages_dir}" ]; then
+      art="${f#$pages_dir/}"
     fi
-  fi
-done
+    if [ "$art" != "" ]; then
+      echo -n "[pangitive] Deleting $public_dir/$art.html... "
+      rm "$public_dir/$art.html"
+      echo "done."
+      echo -n "[pangitive] Removing $art.html from git ignore list... "
+      sed -i "/^$public_dir\/$art.html$/d" .git/info/exclude
+      echo "done."
+      if [ "$f" != "${f#$articles_dir}" ]; then
+        previous=`get_deleted_previous_file "$art"`
+        next=`get_deleted_next_file "$art"`
+        regenerate_previous_and_next_article_maybe "$previous" "$next"
+      fi
+    fi
+  done
 
-if [ $modification -gt 0 ]; then
-  temp=`mktemp fugitiveXXXXXX`
-  chmod a+r "$temp"
-  echo -n "[fugitive] Generating $public_dir/archives.html... "
-  cat "$templates_dir/archives.html" | \
-    replace_includes | \
-    replace_foreach "article" "$articles_sorted" | \
-    replace_foreach "commit" "$commits" | \
-    replace_empty_article_info | \
-    replace_str "page_title" "archives" | \
-    replace_str "blog_url" "$blog_url" | \
-    replace_commit_info "-1" | \
-    sed "/^[[:space:]]*$/d" > "$temp"
-  cp "$temp" "$public_dir/archives.html"
-  echo "done."
-  echo -n "[fugitive] Generating $public_dir/feed.xml... "
-  last_5_articles=`mktemp fugitiveXXXXXX`
-  head -5 "$articles_sorted" > "$last_5_articles"
-  last_5_commits=`mktemp fugitiveXXXXXX`
-  head -5 "$commits" > "$last_5_commits"
-  cat "$templates_dir/feed.xml" | \
-    replace_includes | \
-    replace_foreach "article" "$last_5_articles" | \
-    replace_foreach "commit" "$last_5_commits" | \
-    replace_str "page_title" "feed" | \
-    replace_str "blog_url" "$blog_url" | \
-    replace_commit_info "-1" | \
-    sed "/^[[:space:]]*$/d" > "$temp"
-  cp "$temp" "$public_dir/feed.xml"
-  echo "done."
-  rm "$last_5_articles" "$last_5_commits" "$temp"
-  echo -n "[fugitive] Using last published article as index page... "
-  cp "$public_dir/`head -1 $articles_sorted`.html" "$public_dir/index.html"
-  echo "done".
-  echo "[fugitive] Blog update complete."
+  # Generate archives
+  if [ $modification -gt 0 ]; then
+    temp=`mktemp pangitiveXXXXXX`
+    archivetemp=`mktemp pangitiveXXXXXX`
+    chmod a+r "$temp"
+    echo -n "[pangitive] Generating $public_dir/archives.html... "
+    load_commit_info "-1"
+    generate_archives "$articles_sorted" "$archivetemp"
+    $pandoc $pandoc_opt \
+      --variable=pagetitle:archives \
+      --variable=blog-url:"$blog_url" \
+      --variable=blog-owner:"$blog_owner" \
+      --variable=blog-title:"$blog_title" \
+      --variable=blog-years:"$blog_years" \
+      --template="$templates_dir/archives.html" \
+      "$commit_Hash" \
+      "$commit_hash" \
+      "$commit_author" \
+      "$commit_author_email" \
+      "$commit_date" \
+      "$commit_date_html5" \
+      "$commit_date_day" \
+      "$commit_date_time" \
+      "$commit_timestamp" \
+      "$commit_comment" \
+      "$commit_slug" \
+      "$commit_body" \
+      "$archivetemp" > "$temp"
+    cp "$temp" "$public_dir/archives.html"
+    echo "done."
+
+    # Generate feed
+    echo -n "[pangitive] Generating $public_dir/feed.xml... "
+    last_5_articles=`mktemp pangitiveXXXXXX`
+    head -5 "$articles_sorted" > "$last_5_articles"
+    generate_archives "$articles_sorted" "$archivetemp" "with_content"
+    $pandoc $pandoc_opt \
+      --variable=pagetitle:feed \
+      --variable=blog-url:"$blog_url" \
+      --template="$templates_dir/feed.xml" \
+      "$commit_Hash" \
+      "$commit_hash" \
+      "$commit_author" \
+      "$commit_author_email" \
+      "$commit_date" \
+      "$commit_date_html5" \
+      "$commit_date_day" \
+      "$commit_date_time" \
+      "$commit_timestamp" \
+      "$commit_comment" \
+      "$commit_slug" \
+      "$commit_body" \
+      "$archivetemp" > "$temp"
+    cp "$temp" "$public_dir/feed.xml"
+    echo "done."
+    rm "$archivetemp" "$last_5_articles" "$temp"
+    echo -n "[pangitive] Using last published article as index page... "
+    cp "$public_dir/`head -1 $articles_sorted`.html" "$public_dir/index.html"
+    echo "done".
+    echo "[pangitive] Blog update complete."
+  fi
 fi
 rm "$articles_sorted"
 rm "$articles_sorted_with_delete"

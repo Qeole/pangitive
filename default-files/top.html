@@ -1,52 +1,54 @@
 <!DOCTYPE html>
-<html dir="ltr" lang="en-US">
+<html$if(lang)$ lang="$lang$"$endif$>
   <head>
-    <title><?fugitive-install name ?>'s blog: <?fugitive page_title ?></title>
-    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
-    <meta name="author" content="<?fugitive-install name ?>" />
-    <meta name="description" content="<?fugitive-install name ?>'s blog" />
-    <meta name="viewport" content="width=device-width" />
-    <link rel="alternate" type="application/rss+xml" href="<?fugitive blog_url ?>feed.xml" title="5 last articles RSS feed" />
-    <link rel="stylesheet" href="fugitive.css" type="text/css" media="screen" />
-    <link rel="stylesheet" href="print.css" type="text/css" media="print" />
-    <link rel="contents" href="archives.html" />
-    <?fugitive ifset:article_file ?>
-    <link rel="canonical" href="<?fugitive article_file ?>.html" />
-    <?fugitive endifset:article_file ?>
-    <?fugitive ifset:article_previous_file ?>
-    <link rel="prev" href="<?fugitive article_previous_file ?>.html" />
-    <?fugitive endifset:article_previous_file ?>
-    <?fugitive ifset:article_next_file ?>
-    <link rel="next" href="<?fugitive article_next_file ?>.html" />
-    <?fugitive endifset:article_next_file ?>
+    <title>$blog-title$: $pagetitle$</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+$for(author-meta)$
+    <meta name="author" content="$author-meta$">
+$endfor$
+$if(date-meta)$
+    <meta name="dcterms.date" content="$date-meta$">
+$endif$
+    <!--[if lt IE 9]>
+      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <meta name="description" content="Qeole's blog">
+    <link rel="alternate" type="application/rss+xml" href="feed.xml" title="last 5 articles RSS feed">
+$for(css)$
+    <link rel="stylesheet" href="$css$">
+$endfor$
+    <link rel="stylesheet" href="print.css" media="print">
+$if(math)$
+    $math$
+$endif$
+    <link rel="contents" href="archives.html">
+$if(article)$
+    <link rel="canonical" href="$article$.html">
+  $if(article-previous)$
+    <link rel="prev" href="$article-previous$.html">
+  $endif$
+  $if(article-next)$
+    <link rel="next" href="$article-next$.html">
+  $endif$
+$endif$
+$for(header-includes)$
+    $header-includes$
+$endfor$
   </head>
   <body>
+$for(include-before)$
+        $include-before$
+$endfor$
     <div id="container">
       <nav id="topnav">
-        <?fugitive ifset:article_file ?>
-        <ul class="nav">
-          <?fugitive ifset:article_previous_file ?>
-          <li>
-            <a href="<?fugitive article_previous_file ?>.html"
-               title="<?fugitive article_previous_title ?>">« previous</a>
-          </li>
-          <?fugitive endifset:article_previous_file ?>
-          <?fugitive ifset:article_next_file ?>
-          <li>
-            <a href="<?fugitive article_next_file ?>.html"
-               title="<?fugitive article_next_title ?>">next »</a>
-          </li>
-          <?fugitive endifset:article_next_file ?>
-        </ul>
-        <?fugitive endifset:article_file ?>
         <ul>
           <li><a href="index.html">home</a></li>
           <li><a href="archives.html">archives</a></li>
+          <li><a href="about.html">about</a></li>
         </ul>
       </nav>
       <header>
-        <h1><a href="<?fugitive blog_url ?>">
-            <?fugitive-install name ?>'s blog
-        </a></h1>
-        <q>Don't learn to hack, hack to learn.</q>
+        <h1><a href="$blog-url$">$blog-title$</a></h1>
+        <q>Don't learn to hack, hack to learn</q>
       </header>

@@ -1,17 +1,17 @@
 #!/bin/sh
 
 replace_string() {
-  sed "s/<?fugitive-install[[:space:]]\+$1[[:space:]]*?>/$2/"
+  sed "s/<?pangitive-install[[:space:]]\+$1[[:space:]]*?>/$2/"
 }
 
-fugitive_write_template() {
+pangitive_write_template() {
   name=`git config --get user.name`
   base64 -d | gunzip | replace_string "name" "$name" | \
     replace_string "year" "`date +%Y`"
 }
 
-fugitive_install_hooks() {
-  echo -n "Installing fugitive hooks scripts... "
+pangitive_install_hooks() {
+  echo -n "Installing pangitive hooks scripts... "
   (base64 -d | gunzip) > .git/hooks/pre-commit <<EOF
 #INCLUDE:pre-commit.sh#
 EOF
@@ -33,29 +33,45 @@ EOF
   chmod +x .git/hooks/post-commit
   chmod +x .git/hooks/post-receive
   echo "done."
+  pangitive_make_previewer
 }
 
-fugitive_install_config() {
-  echo -n "Adding default fugitive settings to git config... "
+pangitive_make_previewer() {
+  echo -n "Creating preview script... "
+  (base64 -d | gunzip) > preview <<EOF
+#INCLUDE:preview-gen.sh#
+EOF
+  (base64 -d | gunzip) >> preview <<EOF
+#INCLUDE:html-gen.sh#
+EOF
+  chmod +x preview
+  echo "done"
+}
+
+pangitive_install_config() {
+  echo -n "Adding default pangitive settings to git config... "
   if [ "$1" = "remote" ]; then
     git config --add receive.denyCurrentBranch "ignore"
   fi
-  git config --add fugitive.blog-url ""
-  git config --add fugitive.templates-dir "_templates"
-  git config --add fugitive.articles-dir "_articles"
-  git config --add fugitive.pages-dir "_pages"
-  git config --add fugitive.public-dir "_public"
-  git config --add fugitive.preproc ""
+  git config --add pangitive.blog-url ""
+  git config --add pangitive.blog-owner "`git config --get user.name`"
+  git config --add pangitive.blog-title "`git config --get user.name`'s blog"
+  git config --add pangitive.templates-dir "_templates"
+  git config --add pangitive.articles-dir "_articles"
+  git config --add pangitive.pages-dir "_pages"
+  git config --add pangitive.public-dir "_public"
+  git config --add pangitive.pandoc "`which pandoc`"
+  git config --add pangitive.pandoc-options "--from=markdown --to=html5 --smart --css=pangitive.css --number-sections"
   echo "done."
 }
 
-fugitive_install() {
+pangitive_install() {
   if [ -d ".git" ]; then
     echo -n "There's already a git repository here, "
     echo "enter 'yes' if you want to continue: "
     read CONTINUE
     if [ "$CONTINUE" != "yes" ]; then
-      echo "Okay, aborting."
+      echo "Aborting."
       exit 1
     fi
   else
@@ -63,8 +79,8 @@ fugitive_install() {
     git init >/dev/null
     echo "done."
   fi
-  fugitive_install_config "$1"
-  fugitive_install_hooks "$1"
+  pangitive_install_config "$1"
+  pangitive_install_hooks "$1"
   echo -n "Preventing git to track temporary and generated files... "
     cat >> .git/info/exclude <<EOF
 *~
@@ -78,25 +94,27 @@ EOF
     mkdir -p _drafts _articles _pages _templates _public
     echo "done."
     echo -n "Writing default template files... "
-    fugitive_write_template > _templates/article.html <<EOF
-#INCLUDE:default-files/article.html#
-EOF
-    fugitive_write_template > _templates/archives.html <<EOF
-#INCLUDE:default-files/archives.html#
-EOF
-    fugitive_write_template > _templates/top.html <<EOF
+    (pangitive_write_template | tee _templates/archives.html) \
+      > _templates/article.html <<EOF
 #INCLUDE:default-files/top.html#
 EOF
-    fugitive_write_template > _templates/bottom.html <<EOF
+    pangitive_write_template >> _templates/article.html <<EOF
+#INCLUDE:default-files/article.html#
+EOF
+    pangitive_write_template >> _templates/archives.html <<EOF
+#INCLUDE:default-files/archives.html#
+EOF
+    (pangitive_write_template | tee -a _templates/archives.html) \
+      >> _templates/article.html <<EOF
 #INCLUDE:default-files/bottom.html#
 EOF
-    fugitive_write_template > _templates/feed.xml <<EOF
+    pangitive_write_template > _templates/feed.xml <<EOF
 #INCLUDE:default-files/feed.xml#
 EOF
     echo "done."
     echo -n "Writing default css files... "
-    (base64 -d | gunzip) > _public/fugitive.css <<EOF
-#INCLUDE:default-files/fugitive.css#
+    (base64 -d | gunzip) > _public/pangitive.css <<EOF
+#INCLUDE:default-files/pangitive.css#
 EOF
     (base64 -d | gunzip) > _public/print.css <<EOF
 #INCLUDE:default-files/print.css#
@@ -104,37 +122,37 @@ EOF
     echo "done."
     echo -n "Importing files into git repository... "
     git add _templates/* _public/*.css >/dev/null
-    git commit --no-verify -m "fugitive inital import" >/dev/null 2>&1
+    git commit --no-verify -m "pangitive inital import" >/dev/null 2>&1
     echo "done."
     echo "Writing dummy article (README) and adding it to the repos... "
-    (base64 -d | gunzip) > _articles/fugitive-readme <<EOF
-#INCLUDE:README.html#
+    (base64 -d | gunzip) > _articles/pangitive-readme <<EOF
+#INCLUDE:README.md#
 EOF
-    git add _articles/fugitive-readme
-    git commit --no-verify --author="p4bl0 <r _at_ uzy .dot. me>" \
-      -m "fugitive: README" >/dev/null
+    git add _articles/pangitive-readme
+    git commit --no-verify --author="Qeole < qeole _at_ qoba .dot. lt >" \
+      -m "pangitive: README" >/dev/null
     echo "done."
   fi
   echo "Installation complete, please set your blog url using"
-  echo '`git config fugitive.blog-url "<url>"`.'
+  echo '    git config pangitive.blog-url "<url>"'
 }
 
-fugitive_usage() {
-  echo "This is fugitive installation script."
-  echo "To install a local (where you commit) repository of your blog run:"
-  echo "      fugitive --install-local <dir>"
-  echo -n "where <dir> is where you want the installation to take place, "
-  echo "it's in the working directory by defaults."
-  echo "To install a remote (where you push) repository of your blog run:"
-  echo "      fugitive --install-remote <dir>"
-  echo -n "where <dir> is where you want the installation to take place, "
-  echo "it's in the working directory by defaults."
+pangitive_usage() {
+  echo "This is pangitive installation script."
+  echo "  To install a local (where you commit) repository of your blog run:"
+  echo "      pangitive --install-local <dir>"
+  echo -n "  where <dir> is where you want the installation to take place, "
+  echo "defaults to current working directory."
+  echo "  To install a remote (where you push) repository of your blog run:"
+  echo "      pangitive --install-remote <dir>"
+  echo -n "  where <dir> is where you want the installation to take place, "
+  echo "defaults to current working directory."
 }
 
-fugitive_help() {
-  echo -n "fugitive is a blog engine running on top of git using hooks to "
-  echo "generate static html pages and thus having only git as dependency."
-  fugitive_usage
+pangitive_help() {
+  echo -n "Pangitive is a blog engine running on top of pandoc and git,"
+  echo "using hooks to generate static HTML pages."
+  pangitive_usage
 }
 
 DIR="."
@@ -142,11 +160,11 @@ if [ "$2" != "" ]; then DIR="$2"; fi
 if [ ! -d "$DIR" ]; then mkdir -p "$DIR"; fi
 cd "$DIR"
 case "$1" in
-  "--help"|"-h") fugitive_help >&2;;
-  "--install"|"--install-local") fugitive_install "local";;
-  "--install-remote") fugitive_install "remote";;
-  "--install-hooks") fugitive_install_hooks ;;
-  "--install-config") fugitive_install_config "local";;
-  *) fugitive_usage >&2;;
+  "--help"|"-h") pangitive_help >&2;;
+  "--install"|"--install-local") pangitive_install "local";;
+  "--install-remote") pangitive_install "remote";;
+  "--install-hooks") pangitive_install_hooks ;;
+  "--install-config") pangitive_install_config "local";;
+  *) pangitive_usage >&2;;
 esac
 cd - >/dev/null

@@ -2,22 +2,22 @@
 <rss version="2.0">
   <channel>
 
-    <title><?fugitive-install name ?>'s blog rss feed</title>
-    <link><?fugitive blog_url ?></link>
-    <description>5 last published articles</description>
-    <generator>fugitive - http://clandest.in/fugitive</generator>
-    <lastBuildDate><?fugitive commit_date ?></lastBuildDate>
+    <title>Qeole's blog rss feed</title>
+    <link>$blog-url$</link>
+    <description>last five published articles</description>
+    <generator>pangitive</generator>
+    <lastBuildDate>$commit-date$</lastBuildDate>
 
-    <?fugitive foreach:article ?>
+$for(article)$
     <item>
-      <title><![CDATA[<?fugitive article_title ?>]]></title>
-      <link><?fugitive blog_url ?><?fugitive article_file ?>.html</link>
-      <description><![CDATA[<?fugitive article_content ?>]]></description>
-      <author><?fugitive article_cauthor ?></author>
-      <guid><?fugitive blog_url ?><?fugitive article_file ?>.html</guid>
-      <pubDate><?fugitive article_cdatetime ?></pubDate>
+      <title><![CDATA[$article.title$]]></title>
+      <link>$blog-url$/$article.file$.html</link>
+      <description><![CDATA[$article.content$]]></description>
+      <author>$article.cauthor$</author>
+      <guid>$blog-url$/$article.file$.html</guid>
+      <pubDate>$article.cdate$</pubDate>
     </item>
-    <?fugitive endforeach:article ?>
+$endfor$
 
   </channel>
 </rss>
