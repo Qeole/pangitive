@@ -15,6 +15,7 @@ else
 fi
 
 articles_dir=`git config --get fugitive.articles-dir`
+pages_dir=`git config --get fugitive.pages-dir`
 
 added_files=`git log $range --name-status --pretty="format:" | \
   grep -E '^A' | cut -f2 | sort | uniq`
@@ -24,10 +25,13 @@ deleted_files=`git log $range --name-status --pretty="format:" | \
   grep -E '^D' | cut -f2 | sort | uniq`
 
 tmpart=`mktemp fugitiveXXXXXX`
+tmpust=`mktemp fugitiveXXXXXX`
 tmpadd=`mktemp fugitiveXXXXXX`
 tmpmod=`mktemp fugitiveXXXXXX`
 tmpdel=`mktemp fugitiveXXXXXX`
-ls "$articles_dir"/* > "$tmpart"
+ls "$articles_dir"/* > "$tmpust"
+ls "$pages_dir"/* >> "$tmpust"
+sort "$tmpust" > "$tmpart"
 echo "$added_files" | tr " " "\n" > "$tmpadd"
 echo "$modified_files" | tr " " "\n" > "$tmpmod"
 echo "$deleted_files" | tr " " "\n" > "$tmpdel"
@@ -37,4 +41,4 @@ deleted_files=`comm -23 --nocheck-order "$tmpdel" "$tmpadd"`
 added_files=`comm -12 --nocheck-order "$tmpadd" "$tmpart"`
 echo "$added_files" | tr " " "\n" > "$tmpadd"
 modified_files=`comm -23 --nocheck-order "$tmpmod" "$tmpadd"`
-rm "$tmpart" "$tmpadd" "$tmpmod" "$tmpdel"
+rm "$tmpust" "$tmpart" "$tmpadd" "$tmpmod" "$tmpdel"

@@ -7,6 +7,7 @@ templates_dir=`git config --get fugitive.templates-dir`
 public_dir=`git config --get fugitive.public-dir`
 if [ ! -d "$public_dir" ]; then mkdir -p "$public_dir"; fi
 articles_dir=`git config --get fugitive.articles-dir`
+pages_dir=`git config --get fugitive.pages-dir`
 preproc=`git config --get fugitive.preproc`
 if [ "$preproc" = "" ]; then preproc="cat"; fi
 
@@ -17,12 +18,15 @@ if [ "$tpl_change" -gt 0 ]; then
   modified_files=`git log $first..HEAD^ --name-status --pretty="format:" | \
     grep -E '^A' | cut -f2 | sort | uniq`
   deleted_files=
+  tmpust=`mktemp fugitiveXXXXXX`
   tmpart=`mktemp fugitiveXXXXXX`
   tmpmod=`mktemp fugitiveXXXXXX`
-  ls "$articles_dir"/* > "$tmpart"
+  ls "$articles_dir"/* > "$tmpust"
+  ls "$pages_dir"/* >> "$tmpust"
+  sort "$tmpust" > "$tmpart"
   echo "$modified_files" | tr " " "\n" > "$tmpmod"
   modified_files=`comm -12 --nocheck-order "$tmpmod" "$tmpart"`
-  rm "$tmpart" "$tmpmod"
+  rm "$tmpust" "$tmpart" "$tmpmod"
   echo "[fugitive] Templates changed, regenerating everything..."
 fi
 
@@ -52,7 +56,7 @@ commits=`mktemp fugitiveXXXXXX`
 git log --oneline | cut -d' ' -f1 > "$commits"
 
 get_article_info() {
-  git log --format="$1" -- "$articles_dir/$2"
+  git log --format="$1" -- "$2/$3"
 }
 get_article_next_file() {
   next=`grep -B1 "^$1$" "$articles_sorted" | head -1`
@@ -79,13 +83,13 @@ get_deleted_previous_file() {
   fi
 }
 get_article_title() {
-  if [ "$1" != "" ]; then
-    head -1 "$articles_dir/$1"
+  if [ "$2" != "" ]; then
+    head -1 "$1/$2"
   fi
 }
 get_article_content() {
   tmp=`mktemp fugitiveXXXXXX`
-  tail -n+2 "$articles_dir/$1" | ($preproc) > "$tmp"
+  tail -n+2 "$1/$2" | ($preproc) > "$tmp"
   echo "$tmp"
 }
 
@@ -193,52 +197,73 @@ replace_commit_info() {
 }
 
 replace_article_info() {
-  article_title=`get_article_title "$1"`
-  article_cdatetime=`get_article_info "%ai" "$1" | tail -1`
+  article_title=`get_article_title "$1" "$2"`
+  article_cdatetime=`get_article_info "%ai" "$1" "$2" | tail -1`
   article_cdatetime_html5=`echo "$article_cdatetime" | \
     sed "s/ /T/;s/ \(+\|-\)\([0-9][0-9]\)/\1\2:/"`
   article_cdate=`echo "$article_cdatetime" | cut -d' ' -f1`
   article_ctime=`echo "$article_cdatetime" | cut -d' ' -f2`
-  article_ctimestamp=`get_article_info "%at" "$1" | tail -1`
-  u=`get_article_info "%ai" "$1" | wc -l`
-  article_mdatetime=`if test "$u" -gt 1; then get_article_info "%ai" "$1" | \
+  article_ctimestamp=`get_article_info "%at" "$1" "$2" | tail -1`
+  u=`get_article_info "%ai" "$1" "$2" | wc -l`
+  article_mdatetime=`if test "$u" -gt 1; then get_article_info "%ai" "$1" "$2" | \
     head -1; fi`
   article_mdatetime_html5=`echo "$article_mdatetime" | \
     sed "s/ /T/;s/ \(+\|-\)\([0-9][0-9]\)/\1\2:/"`
   article_mdate=`echo "$article_mdatetime" | cut -d' ' -f1`
   article_mtime=`echo "$article_mdatetime" | cut -d' ' -f2`
   article_mtimestamp=`if test "$u" -gt 1; then get_article_info "%at" \
-    "$1" | head -1; fi`
-  article_cauthor=`get_article_info "%an" "$1" | tail -1`
-  article_cauthor_email=`get_article_info "%ae" "$1" | tail -1 | sanit_mail`
-  article_mauthor=`get_article_info "%an" "$1" | head -1`
-  article_mauthor_email=`get_article_info "%ae" "$1" | head -1 | sanit_mail`
-  article_previous_file=`get_article_previous_file "$1"`
-  article_previous_title=`get_article_title "$article_previous_file"`
-  article_next_file=`get_article_next_file "$1"`
-  article_next_title=`get_article_title "$article_next_file"`
+    "$1" "$2" | head -1; fi`
+  article_cauthor=`get_article_info "%an" "$1" "$2" | tail -1`
+  article_cauthor_email=`get_article_info "%ae" "$1" "$2" | tail -1 | sanit_mail`
+  article_mauthor=`get_article_info "%an" "$1" "$2" | head -1`
+  article_mauthor_email=`get_article_info "%ae" "$1" "$2" | head -1 | sanit_mail`
 
-  replace_file "article_content" "`get_article_content \"$1\"`" | \
-    replace_str "article_file" "$1" | \
-    replace_str "article_title" "$article_title" | \
-    replace_str "article_cdatetime" "$article_cdatetime" | \
-    replace_str "article_cdatetime_html5" "$article_cdatetime_html5" | \
-    replace_str "article_cdate" "$article_cdate" | \
-    replace_str "article_ctime" "$article_ctime" | \
-    replace_str "article_ctimestamp" "$article_ctimestamp" | \
-    replace_str "article_mdatetime" "$article_mdatetime" | \
-    replace_str "article_mdatetime_html5" "$article_mdatetime_html5" | \
-    replace_str "article_mdate" "$article_mdate" | \
-    replace_str "article_mtime" "$article_mtime" | \
-    replace_str "article_mtimestamp" "$article_mtimestamp" | \
-    replace_str "article_cauthor" "$article_cauthor" | \
-    replace_str "article_cauthor_email" "$article_cauthor_email" | \
-    replace_str "article_mauthor" "$article_mauthor" | \
-    replace_str "article_mauthor_email" "$article_mauthor_email" | \
-    replace_str "article_previous_file" "$article_previous_file" | \
-    replace_str "article_previous_title" "$article_previous_title" | \
-    replace_str "article_next_file" "$article_next_file" | \
-    replace_str "article_next_title" "$article_next_title"
+  if [ "$1" != "$pages_dir" ]; then
+    article_previous_file=`get_article_previous_file "$2"`
+    article_previous_title=`get_article_title "$1" "$article_previous_file"`
+    article_next_file=`get_article_next_file "$2"`
+    article_next_title=`get_article_title "$1" "$article_next_file"`
+
+    replace_file "article_content" "`get_article_content \"$1\" \"$2\"`" | \
+      replace_str "article_file" "$2" | \
+      replace_str "article_title" "$article_title" | \
+      replace_str "article_cdatetime" "$article_cdatetime" | \
+      replace_str "article_cdatetime_html5" "$article_cdatetime_html5" | \
+      replace_str "article_cdate" "$article_cdate" | \
+      replace_str "article_ctime" "$article_ctime" | \
+      replace_str "article_ctimestamp" "$article_ctimestamp" | \
+      replace_str "article_mdatetime" "$article_mdatetime" | \
+      replace_str "article_mdatetime_html5" "$article_mdatetime_html5" | \
+      replace_str "article_mdate" "$article_mdate" | \
+      replace_str "article_mtime" "$article_mtime" | \
+      replace_str "article_mtimestamp" "$article_mtimestamp" | \
+      replace_str "article_cauthor" "$article_cauthor" | \
+      replace_str "article_cauthor_email" "$article_cauthor_email" | \
+      replace_str "article_mauthor" "$article_mauthor" | \
+      replace_str "article_mauthor_email" "$article_mauthor_email" | \
+      replace_str "article_previous_file" "$article_previous_file" | \
+      replace_str "article_previous_title" "$article_previous_title" | \
+      replace_str "article_next_file" "$article_next_file" | \
+      replace_str "article_next_title" "$article_next_title"
+  else
+    replace_file "article_content" "`get_article_content \"$1\" \"$2\"`" | \
+      replace_str "article_file" "" | \
+      replace_str "article_title" "$article_title" | \
+      replace_str "article_cdatetime" "$article_cdatetime" | \
+      replace_str "article_cdatetime_html5" "$article_cdatetime_html5" | \
+      replace_str "article_cdate" "$article_cdate" | \
+      replace_str "article_ctime" "$article_ctime" | \
+      replace_str "article_ctimestamp" "$article_ctimestamp" | \
+      replace_str "article_mdatetime" "$article_mdatetime" | \
+      replace_str "article_mdatetime_html5" "$article_mdatetime_html5" | \
+      replace_str "article_mdate" "$article_mdate" | \
+      replace_str "article_mtime" "$article_mtime" | \
+      replace_str "article_mtimestamp" "$article_mtimestamp" | \
+      replace_str "article_cauthor" "$article_cauthor" | \
+      replace_str "article_cauthor_email" "$article_cauthor_email" | \
+      replace_str "article_mauthor" "$article_mauthor" | \
+      replace_str "article_mauthor_email" "$article_mauthor_email"
+  fi
 }
 
 replace_empty_article_info() {
@@ -280,9 +305,15 @@ replace_foreach () {
   sed "s/<?fugitive[[:space:]]\+$fe[[:space:]]*?>/<?fugitive foreach_body ?>\n\0/" | \
     sed "/<?fugitive[[:space:]]\+$fe[[:space:]]*?>/,/<?fugitive[[:space:]]\+end$fe[[:space:]]*?>/d" | \
     cat > "$tmpfile"
-  for i in `cat "$2"`; do
-    cat "$foreach_body" | replace_$1_info "$i"
-  done > "$temp"
+  if [ "$1" = "article" ]; then
+    for i in `cat "$2"`; do
+      cat "$foreach_body" | replace_article_info "$articles_dir" "$i"
+    done > "$temp"
+  else
+    for i in `cat "$2"`; do
+      cat "$foreach_body" | replace_$1_info "$i"
+    done > "$temp"
+  fi
   cat "$tmpfile" | replace_file "foreach_body" "$temp"
   rm "$foreach_body" "$tmpfile"
 }
@@ -290,16 +321,26 @@ replace_foreach () {
 generate_article() {
   temp=`mktemp fugitiveXXXXXX`
   chmod a+r "$temp"
-  art="${1#$articles_dir/}"
-  title=`get_article_title "$art"`
-  cat "$templates_dir/article.html" | \
-    replace_includes | \
-    replace_str "page_title" "$title" | \
-    replace_str "blog_url" "$blog_url" | \
-    replace_commit_info "-1" | \
-    replace_article_info "$art" | \
-    sed "/^[[:space:]]*$/d" > "$temp"
-  mv "$temp" "$public_dir/$art.html"
+  if [ "$1" != "${1#$articles_dir}" ]; then
+    art="${1#$articles_dir/}"
+    dir=$articles_dir
+    tpl="article.html"
+  elif [ "$f" != "${1#$pages_dir}" ]; then
+    art="${1#$pages_dir/}"
+    dir=$pages_dir
+    tpl="article.html"
+  fi
+  if [ "$art" != "" ]; then
+    title=`get_article_title "$dir" "$art"`
+    cat "$templates_dir/$tpl" | \
+      replace_includes | \
+      replace_str "page_title" "$title" | \
+      replace_str "blog_url" "$blog_url" | \
+      replace_commit_info "-1" | \
+      replace_article_info "$dir" "$art" | \
+      sed "/^[[:space:]]*$/d" > "$temp"
+    mv "$temp" "$public_dir/$art.html"
+  fi
 }
 
 regenerate_previous_and_next_article_maybe() {
@@ -324,41 +365,61 @@ regenerate_previous_and_next_article_maybe() {
 modification=0
 
 for f in $added_files $modified_files; do
+  art=""
   if [ "$f" != "${f#$articles_dir}" ]; then
+    art="${f#$articles_dir/}"
     modification=$((modification + 1))
-    echo -n "[fugitive] Generating $public_dir/${f#$articles_dir/}.html from"
+  elif [ "$f" != "${f#$pages_dir}" ]; then
+    art="${f#$pages_dir/}"
+  fi
+  if [ "$art" != "" ]; then
+    echo -n "[fugitive] Generating $public_dir/${art}.html from"
     echo -n " $f... "
     generate_article "$f"
     echo "done."
-    echo "${f#$articles_dir/}" >> "$generated_files"
+    echo "$art" >> "$generated_files"
   fi
 done
 
 for f in $added_files; do
+  art=""
   if [ "$f" != "${f#$articles_dir}" ]; then
     art="${f#$articles_dir/}"
+  elif [ "$f" != "${f#$pages_dir}" ]; then
+    art="${f#$pages_dir/}"
+  fi
+  if [ "$art" != "" ]; then
     echo -n "[fugitive] Adding $public_dir/$art.html to git ignore list... "
     echo "$public_dir/$art.html" >> .git/info/exclude
     echo "done."
-    previous=`get_article_previous_file "$art"`
-    next=`get_article_next_file "$art"`
-    regenerate_previous_and_next_article_maybe "$previous" "$next"
+    if [ "$f" != "${f#$articles_dir}" ]; then
+      previous=`get_article_previous_file "$art"`
+      next=`get_article_next_file "$art"`
+      regenerate_previous_and_next_article_maybe "$previous" "$next"
+    fi;
   fi
 done
 
 for f in $deleted_files; do
+  art=""
   if [ "$f" != "${f#$articles_dir}" ]; then
-    modification=$((modification + 1))
     art="${f#$articles_dir/}"
+    modification=$((modification + 1))
+  elif [ "$f" != "${f#$pages_dir}" ]; then
+    art="${f#$pages_dir/}"
+  fi
+  if [ "$art" != "" ]; then
     echo -n "[fugitive] Deleting $public_dir/$art.html... "
     rm "$public_dir/$art.html"
     echo "done."
     echo -n "[fugitive] Removing $art.html from git ignore list... "
     sed -i "/^$public_dir\/$art.html$/d" .git/info/exclude
     echo "done."
-    previous=`get_deleted_previous_file "$art"`
-    next=`get_deleted_next_file "$art"`
-    regenerate_previous_and_next_article_maybe "$previous" "$next"
+    if [ "$f" != "${f#$articles_dir}" ]; then
+      previous=`get_deleted_previous_file "$art"`
+      next=`get_deleted_next_file "$art"`
+      regenerate_previous_and_next_article_maybe "$previous" "$next"
+    fi
   fi
 done
 

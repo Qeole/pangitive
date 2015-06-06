@@ -82,6 +82,12 @@ fugitive: README
     This is the path where fugitive will look for published articles. Default
     value is &quot;_articles&quot;.
   </dd>
+  <dt>pages-dir*</dt>
+  <dd>
+    This is the path where fugitive will look for static pages (not to be
+    considered as blog entries, but to generate with the engine all the same).
+    Default value is &quot;_pages&quot;.
+  </dd>
   <dt>templates-dir*</dt>
   <dd>
     This is the path where fugitive will look for templates files. Default
@@ -132,6 +138,15 @@ fugitive: README
   <li>and finally it copies the static html file of the last article to
   &quot;index.html&quot;.</li>
 </ul>
+<p>
+  A &quot;_pages&quot; directory is also present by default. Articles inside
+  the <em>pages-dir</em> directory (see <a href="#config">configuration</a>)
+  will be turned into static pages but not considered as blog entries: there
+  will not be any link to &quot;previous&quot; or &quot;next&quot; articles (or
+  pages) on them, and they will not appear in the archives or in the RSS feed.
+  Be sure to link them from other articles or from the template if you want
+  your readers to find them.
+</p>
 <p class="note">
   If a change happen in the <em>templates-dir</em> directory
   (see <a href="#config">configuration</a>), then static html files for

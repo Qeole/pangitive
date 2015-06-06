@@ -43,6 +43,7 @@ fugitive_install_config() {
   git config --add fugitive.blog-url ""
   git config --add fugitive.templates-dir "_templates"
   git config --add fugitive.articles-dir "_articles"
+  git config --add fugitive.pages-dir "_pages"
   git config --add fugitive.public-dir "_public"
   git config --add fugitive.preproc ""
   echo "done."
@@ -74,7 +75,7 @@ EOF
   echo "done."
   if [ "$1" = "local" ]; then
     echo -n "Creating default directory tree... "
-    mkdir -p _drafts _articles _templates _public
+    mkdir -p _drafts _articles _pages _templates _public
     echo "done."
     echo -n "Writing default template files... "
     fugitive_write_template > _templates/article.html <<EOF
