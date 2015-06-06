@@ -81,18 +81,18 @@ Defaults to the Git user name of the user creating the blog.<br />
 **blog-title**<br />
 This is the title of your blog.
 Defaults to “*blog-owner*'s blog”.<br />
-**public-dir\***<br />
+**public-dir**(1)<br />
 This is the path to the directory that will contain the generated HTML files.
 Default value is "\_public". You could set it to "\_public/blog" for instance if you want to have have a website in "\_public" and your blog in "/blog".<br />
-**articles-dir\***<br />
+**articles-dir**(1)<br />
 This is the path where pangitive will look for published articles.
 Default value is "\_articles".<br />
-**pages-dir\***<br />
+**pages-dir**(1)<br />
 This is the path where pangitive will look for published pages.
 Those pages are similar to articles, but they will not have any “Previous”/“Next” links and will not appear either in RSS feed or blog archives.
 Do not forget to link to them from somewhere else if you want your readers to find them.
 Default value is "\_pages".<br />
-**templates-dir\***<br />
+**templates-dir**(1)<br />
 This is the path where pangitive will look for templates files.
 Default value is "\_templates".<br />
 **pandoc**<br />
@@ -105,7 +105,7 @@ Default value is:<br />
 Of course you can change it.
 Of course you should read pandoc documentation.
 
-\* Those paths are relative to the root of the Git repository, and they must be in it and must not start with “.” neither have a “/” at the end.
+\(1\) Those paths are relative to the root of the Git repository, and they must be in it and must not start with “.” neither have a “/” at the end.
 Example: “dir/subdir” is valid but “./dir/subdir” and “dir/subdir/” are not.
 
 # Usage
