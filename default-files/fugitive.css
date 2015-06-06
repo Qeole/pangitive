@@ -254,7 +254,7 @@ article > div figure figcaption {
   display: block;
   counter-increment: figure;
 }
-article > div figure.example figcation { counter-increment: example; }
+article > div figure.example figcaption { counter-increment: example; }
 article > div figure figcaption:before {
   display: inline;
   content: "figure " counter(figure) ":";

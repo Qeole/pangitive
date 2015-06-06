@@ -5,7 +5,7 @@
     <title><?fugitive-install name ?>'s blog rss feed</title>
     <link><?fugitive blog_url ?></link>
     <description>5 last published articles</description>
-    <generator>fugitive - http://gitorious.org/fugitive</generator>
+    <generator>fugitive - http://clandest.in/fugitive</generator>
     <lastBuildDate><?fugitive commit_date ?></lastBuildDate>
 
     <?fugitive foreach:article ?>
