@@ -1,0 +1,30 @@
+      <?fugitive include:top.html ?>
+      <article>
+        <header>
+          <h1>Archives</h1>
+        </header>
+        <div>
+          <dl>
+            <?fugitive foreach:article ?>
+            <dt>
+              <time datetime="<?fugitive article_cdatetime_html5 ?>">
+                <?fugitive article_cdate ?> at <?fugitive article_ctime ?>
+              </time>
+            </dt>
+            <dd>
+              <a href="<?fugitive article_file ?>.html">
+                <?fugitive article_title ?>
+              </a>
+              <?fugitive ifset:article_mdatetime ?>
+              <br /><small>last update on
+                <time datetime="<?fugitive article_mdatetime_html5 ?>">
+                  <?fugitive article_mdate ?> at <?fugitive article_mtime ?>
+                </time>
+              </small>
+              <?fugitive endifset:article_mdatetime ?>
+            </dd>
+            <?fugitive endforeach:article ?>
+          </dl>
+        </div>
+      </article>
+      <?fugitive include:bottom.html ?>

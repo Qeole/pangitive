@@ -1,0 +1,423 @@
+fugitive: README
+
+<h2 id="info">Info</h2>
+
+<p>
+  fugitive is a blog engine running on top of git using hooks to generate
+  static html pages and thus having only git as dependency.
+</p>
+<p>
+  In its hooks, fugitive uses only standard UNIX® tools that are included in
+  the GNU core-utils package, plus sh as script interpreter. That's it.<br />
+  Moreover, everything that can be done using git, is.<br />
+  No dependencies like rack, heroku, or whatever Ruby gems you can think of. No
+  configuration files. No metadata in your articles files. Hell, if you want to
+  you could even make a <a href="#templating">template</a> that use git log as
+  storage backend, which means <em>no files</em> either, just and only git.
+</p>
+
+<h2 id="install">Install</h2>
+
+<h3 id="build">Build</h3>
+<p>
+  If you want to build fugitive from the source, clone the git repository:
+  <br />
+  <code>git clone http://clandest.in/fugitive fugitive</code>
+  <br />
+  Then go in the newly created directory: <code>cd fugitive</code>, and
+  run the build script: <code>./build.sh</code>.
+  <br />
+  This will generate an executable file &quot;fugitive&quot; which you can use
+  to create your blog.
+</p>
+<h3 id="create">Create a blog</h3>
+<p>
+  There are two install modes for fugitive: local and remote. The local mode
+  should be used to install a repository where you edit your blog, and the
+  remote mode for a repository to which you're going to push to publish your
+  blog.<br />
+  The local mode can also be used to publish if you edit your files directly on
+  your server.
+</p>
+<p>
+  To create your blog run the command:<br />
+  <code>fugitive --install-<em>mode</em> &lt;dir&gt;</code>,
+  where <em>mode</em> is either &quot;local&quot; or &quot;remote&quot;.
+  <br />
+  This will create a git repository with appropriate hooks, config and files in
+  &lt;dir&gt;.
+  <br />
+  If &lt;dir&gt; isn't specified then the current working directory is used.
+</p>
+<p class="important">
+  Once you have installed your blog you need to set the <em>blog-url</em>
+  parameter in your git configuration. See <a href="#config">configuration</a>
+  for details.
+</p>
+
+<h2 id="config">Configuration</h2>
+
+<p>
+  All these settings are in the &quot;fugitive&quot; section of the git config.
+  You can change them with the command <br />
+  <code>git config fugitive.<em>parameter</em> <em>value</em></code>,
+  where <em>parameter</em> is one of the following:
+</p>
+<dl>
+  <dt>blog-url</dt>
+  <dd>
+    This is the public URL of the generated blog. <strong>You need to set
+    it</strong> as soon as possible since it's required for the RSS feed (and
+    used in the default footer template).
+  </dd>
+  <dt>public-dir*</dt>
+  <dd>
+    This is the path to the directory that will contain the generated html
+    files. Default value is &quot;_public&quot;. You could set it to
+    &quot;_public/blog&quot; for instance if you want to have have a website in
+    &quot;_public&quot; and your blog in &quot;/blog&quot;.
+  </dd>
+  <dt>articles-dir*</dt>
+  <dd>
+    This is the path where fugitive will look for published articles. Default
+    value is &quot;_articles&quot;.
+  </dd>
+  <dt>templates-dir*</dt>
+  <dd>
+    This is the path where fugitive will look for templates files. Default
+    value is &quot;_templates&quot;.
+  </dd>
+  <dt>preproc</dt>
+  <dd>
+    If you want your article to be preprocessed by an external tool (markdown,
+    textile...) you need to set <em>preproc</em> to a command line that will
+    read on stdin and write to stdout.
+  </dd>
+</dl>
+<p class="note">
+  * Those paths are relative to the root of the git repository, must be in it
+  and must not start with &quot;.&quot; neither have a '/' at the end. Example:
+  &quot;dir/subdir&quot; is valid but &quot;./dir/subdir&quot; and
+  &quot;dir/subdir/&quot; are not.
+</p>
+
+<h2 id="usage">Usage</h2>
+
+<h3 id="general-use">General use</h3>
+<p>
+  Articles you want to publish should be a file without the .html extension in the
+  <em>articles-dir</em> directory (see <a href="#config">configuration</a>).
+  The first line of the file will be used as a title and the rest of the file as
+  the content of the article.
+</p>
+<p>
+  By default there's a &quot;_drafts&quot; directory in which you can put
+  articles you are writing and you want to version control in your git
+  repository but you don't want to publish yet.
+</p>
+<p>
+  When you commit change to a fugitive git repository, the post-commit hook
+  looks in the <em>articles-dir</em> directory
+  (see <a href="#config">configuration</a>) for newly added articles, modified
+  articles and deleted ones. Then it does the following things:
+</p>
+<ul>
+  <li>it generates static html files for newly added articles,</li>
+  <li>it regenerates static html files for modified articles,</li>
+  <li>it deletes static html files for deleted articles,</li>
+  <li>it regenerates static html files for articles that are just before and
+  after newly added and deleted articles (this to maintain the
+  &quot;previous&quot; and &quot;next&quot; links alive),</li>
+  <li>it regenerates the archives.html, tags.html, and feed.xml files,</li>
+  <li>and finally it copies the static html file of the last article to
+  &quot;index.html&quot;.</li>
+</ul>
+<p class="note">
+  If a change happen in the <em>templates-dir</em> directory
+  (see <a href="#config">configuration</a>), then static html files for
+  everything is regenerated to make the change effective.
+</p>
+<p>
+  All generated files are created in the <em>public-dir</em> directory
+  (see <a href="#config">configuration</a>).
+<p>
+  When you push to a remote repository installed with fugitive, the same thing
+  will happen but instead of looking only at the last commit, the hook will
+  analyse every changes since the last push and then (re)generate html files
+  accordingly.
+</p>
+<p class="warning">
+  Do not create an article file named &quot;archives&quot;.<br />
+  Do not create an article file named &quot;index&quot;.
+</p>
+<h3 id="templating">Template system</h3>
+<p>
+  The better explanation about the templates system is to see what the default
+  templates looks like. But since they do not use all the offered
+  possibilities, here are some more explanations...
+</p>
+<p>
+  The fugitive template system uses xml preprocessor
+  syntax: <code>&lt;?fugitive <em>var</em> ?&gt;</code> is rendered as the
+  value of <em>var</em>. This choice has been made because with this syntax
+  templates are still valid xml (and html) document, and it is semantically
+  more accurate than xml comments (<code>&lt;!-- <em>var</em> --&gt;</code>).
+</p>
+<p>
+  In addition to variable rendering, there is a conditional and a foreach loop
+  constructs, plus an include directive.
+</p>
+<p>
+  The syntax of the include directive is <code>&lt;?fugitive
+  include:<em>file</em> ?&gt;</code> where <em>file</em> is relative to
+  the <em>templates-dir</em> directory
+  (see <a href="#config">configuration</a>). The includes are processed before
+  anything else.
+</p>
+<p>
+  The foreach loop construct is specific to the archives.html, tags.html, and
+  feed.xml templates and will therefore be described at the same time. Where
+  available, the loops are processed right after the includes.
+</p>
+<p>
+  The syntax of the conditional construct is as follows:
+</p>
+<pre>&lt;<span class="keyword">?fugitive</span> ifset:<em>var</em> ?&gt;
+  Template code which is ignored if <em>var</em> value is empty, and
+  which typically includes &lt;<span class="function-name">code</span>&gt;&lt;<span class="keyword">?fugitive</span> <em>var</em> ?&gt;&lt;/<span class="function-name">code</span>&gt;.
+&lt;<span class="keyword">?fugitive</span> endifset:<em>var</em> ?&gt;</pre>
+<p class="note">
+  Not every variable can be used in the conditional construct, this is indicated
+  in the description of those which can't.
+</p>
+<p>The following variables are available everywhere:</p>
+<dl>
+  <dt>page_title</dt>
+  <dd>
+    Its value is &quot;archives&quot; in the archives.html template,
+    &quot;feed&quot; in the feed.xml template, or the article title in the
+    article.html template.
+  </dd>
+  <dt>blog_url</dt>
+  <dd>
+    The <em>blog-url</em> value in the &quot;fugitive&quot; section of the git
+    configuration (see <a href="#config">configuration</a>).
+  </dd>
+  <dt>commit_Hash</dt>
+  <dd>
+    Its value is the hash corresponding to the last commit that provoked the
+    (re)generation of the file.
+  </dd>
+  <p class="note">
+    This is case-sensitive. Compare this with the next one.
+  </p>
+  <dt>commit_hash</dt>
+  <dd>
+    Its value is the short hash (the seven first digit of the hash)
+    corresponding to the last commit that provoked the (re)generation of the
+    file.
+  </dd>
+  <dt>commit_author</dt>
+  <dd>
+    Its value is the name of the author of the last commit that provoked the
+    (re)generation of the file.
+  </dd>
+  <dt>commit_author_email</dt>
+  <dd>
+    Its value is the email of the author of the last commit that provoked the
+    (re)generation of the file (with '@' replaced by &quot;[at]&quot; and '.'
+    replaced by &quot;(dot)&quot;).
+  </dd>
+  <dt>commit_datetime</dt>
+  <dd>
+    Its value is the date and time of the last commit that provoked the
+    (re)generation of the file.
+  </dd>
+  <dt>commit_datetime_html5</dt>
+  <dd>
+    Its value is the date and time of the last commit that provoked the
+    (re)generation of the file, <em>but in an html5 <code>&lt;time&gt;</code>
+    compliant format</em>.
+  </dd>
+  <dt>commit_date</dt>
+  <dd>
+    Its value is the date of the last commit that provoked the (re)generation
+    of the file.
+  </dd>
+  <dt>commit_time</dt>
+  <dd>
+    Its value is the time of the last commit that provoked the (re)generation
+    of the file.
+  </dd>
+  <dt>commit_timestamp</dt>
+  <dd>
+    Its value is the unix timestamp of the last commit that provoked the
+    (re)generation of the file.
+  </dd>
+  <dt>commit_subject</dt>
+  <dd>
+    Its value is the subject (first line of the commit message) of the last
+    commit that provoked the (re)generation of the file.
+  </dd>
+  <dt>commit_body</dt>
+  <dd>
+    Its value is the body (the rest of the commit message) of the last commit
+    that provoked the (re)generation of the file. <strong>This variable can't
+    be used in the conditional construct.</strong>
+  </dd>
+  <dt>commit_slug</dt>
+  <dd>
+    Its value is the subject of the last commit that provoked the
+    (re)generation of the file but formatted to be file name friendly.
+  </dd>
+</dl>
+<h4>Variables specific to the article.html template:</h4>
+<dl>
+  <dt>article_title</dt>
+  <dd>
+    Its value is the title of the article (the first line of the file).
+  </dd>
+  <dt>article_content</dt>
+  <dd>
+    Its value is the content of the article (the rest of the
+    file). <strong>This variable can't be used in the conditional
+    construct.</strong>
+  </dd>
+  <dt>article_file</dt>
+  <dd>
+    Its value is the file name of the article (without the .html extension).
+  </dd>
+  <dt>article_cdatetime</dt>
+  <dd>
+    Its value is the date and time of the publication of the article (the date
+    of the commit which added the article to the repository in
+    the <em>articles-dir</em> directory
+    (see <a href="#config">configuration</a>)).
+  </dd>
+  <dt>article_cdatetime_html5</dt>
+  <dd>
+    Same as previous, but in an html5 <code>&lt;time&gt;</code> compliant
+    format.
+  </dd>
+  <dt>article_cdate</dt>
+  <dd>
+    Its value is the date of the publication of the article.
+  </dd>
+  <dt>article_ctime</dt>
+  <dd>
+    Its value is the time of the publication of the article.
+  </dd>
+  <dt>article_ctimestamp</dt>
+  <dd>
+    Its value is the timestamp of the publication of the article.
+  </dd>
+  <dt>article_mdatetime</dt>
+  <dd>
+    Its value is the date and time of the last modification of the article
+    (the date of the last commit which changed the article file).
+  </dd>
+  <dt>article_mdatetime_html5</dt>
+  <dd>
+    Same as previous, but in an html5 <code>&lt;time&gt;</code> compliant
+    format.
+  </dd>
+  <dt>article_mdate</dt>
+  <dd>
+    Its value is the date of the last modification of the article.
+  </dd>
+  <dt>article_mtime</dt>
+  <dd>
+    Its value is the time of the last modification of the article.
+  </dd>
+  <dt>article_mtimestamp</dt>
+  <dd>
+    Its value is the timestamp of the last modification of the article.
+  </dd>
+  <dt>article_cauthor</dt>
+  <dd>
+    Its value is the author of the commit which added the article to the
+    repository.
+  </dd>
+  <dt>article_cauthor_email</dt>
+  <dd>
+    Its value is the email of the author of the commit which added the article
+    to the repository (with '@' replaced by &quot;[at]&quot; and '.' replaced
+    by &quot;(dot)&quot;).
+  </dd>
+  <dt>article_mauthor</dt>
+  <dd>
+    Its value is the author of the last commit which changed the article file.
+  </dd>
+  <dt>article_mauthor_email</dt>
+  <dd>
+    Its value is the email of the author of the last commit which changed the
+    article file (with '@' replaced by &quot;[at]&quot; and '.' replaced by
+    &quot;(dot)&quot;).
+  </dd>
+  <dt>article_previous_file</dt>
+  <dd>
+    Its value is the file name (without .html extension) of the previous
+    article ordered by publication date.
+  </dd>
+  <dt>article_previous_title</dt>
+  <dd>
+    Its value is the title of the previous article ordered by publication date.
+  </dd>
+  <dt>article_next_file</dt>
+  <dd>
+    Its value is the file name (without .html extension) of the next article
+    ordered by publication date.
+  </dd>
+  <dt>article_next_title</dt>
+  <dd>
+    Its value is the title of the next article ordered by publication date.
+  </dd>
+</dl>
+<h4>foreach loops in archives.html and feed.xml:</h4>
+<p>
+  Two foreach loops are available: <code>foreach:article</code>
+  and <code>foreach:commit</code>. The syntax is as follows:
+</p>
+<pre>&lt;<span class="keyword">?fugitive</span> foreach:article ?&gt;
+  Template code that will be repeated for each article and
+  where the values of &lt;<span class="function-name">code</span>&gt;article_*&lt;/<span class="function-name">code</span>&gt; variables are
+  set in accordance with the article each time.
+&lt;<span class="keyword">?fugitive</span> endforeach:article ?&gt;</pre>
+<pre>&lt;<span class="keyword">?fugitive</span> foreach:commit ?&gt;
+  Template code that will be repeated for each commit and
+  where the values of &lt;<span class="function-name">code</span>&gt;commit_*&lt;/<span class="function-name">code</span>&gt; variables are
+  set in accordance with the commit each time.
+&lt;<span class="keyword">?fugitive</span> endforeach:commit ?&gt;</pre>
+<p>
+  The only difference between the archives.html and feed.xml templates is that
+  in feed.xml these constructs only loop on the five last articles and commits.
+</p>
+
+<h2 id="hacking">Hacking fugitive</h2>
+<p>
+  If you want to hack fugitive code to customize the behavior of the hooks, you
+  can either edit the hooks directly in your fugitive blog repository, or edit
+  them in the fugitive source code, then rebuild the <code>fugitive</code>
+  executable using the <code>build.sh</code> script provided in the source code
+  repository.
+</p>
+<p>
+  In the latter case and if you already have a fugitive blog running, you'll
+  need to install the new hooks. This can be done by running the command:<br />
+  <code>fugitive --install-hooks &lt;dir&gt;</code>, where &lt;dir&gt; is the
+  path to your fugitive blog repository, if it isn't specified then the current
+  working directory is used.
+</p>
+<p>
+  This can be handy if you decide for instance that you want to have the
+  last <em>n</em> articles on your index.html page rather than a mere copy of
+  the last article.
+</p>
+
+<h2 id="issues">Known issues</h2>
+<p>
+  There seems to be some issues with the version of git provided in Debian
+  Lenny (1.5.*), I didn't investigate it yet, and I don't know if I'll do it,
+  because at this time Squeeze is already frozen and git 1.7.* is available in
+  the backports which are now officially supported by Debian.
+</p>
