@@ -42,10 +42,25 @@ $for(include-before)$
 $endfor$
     <div id="container">
       <nav id="topnav">
+$if(article-file)$
+        <ul class="nav">
+  $if(article-previous)$
+          <li>
+            <a href="$article-previous$.html"
+               title="$article-previous-title$">« previous</a>
+          </li>
+  $endif$
+  $if(article-next)$
+          <li>
+            <a href="$article-next$.html"
+               title="$article-next-title$">next »</a>
+          </li>
+  $endif$
+        </ul>
+$endif$
         <ul>
           <li><a href="index.html">home</a></li>
           <li><a href="archives.html">archives</a></li>
-          <li><a href="about.html">about</a></li>
         </ul>
       </nav>
       <header>
