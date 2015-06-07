@@ -2,7 +2,7 @@
 <rss version="2.0">
   <channel>
 
-    <title>Qeole's blog rss feed</title>
+    <title>$blog-title$ RSS feed</title>
     <link>$blog-url$</link>
     <description>last five published articles</description>
     <generator>pangitive</generator>
