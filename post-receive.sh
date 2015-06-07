@@ -14,8 +14,8 @@ else
   range="$ref_begin..$ref_end"
 fi
 
-articles_dir=`git config --get fugitive.articles-dir`
-pages_dir=`git config --get fugitive.pages-dir`
+articles_dir=`git config --get pangitive.articles-dir`
+pages_dir=`git config --get pangitive.pages-dir`
 
 added_files=`git log $range --name-status --pretty="format:" | \
   grep -E '^A' | cut -f2 | sort | uniq`
@@ -24,11 +24,11 @@ modified_files=`git log $range --name-status --pretty="format:" | \
 deleted_files=`git log $range --name-status --pretty="format:" | \
   grep -E '^D' | cut -f2 | sort | uniq`
 
-tmpart=`mktemp fugitiveXXXXXX`
-tmpust=`mktemp fugitiveXXXXXX`
-tmpadd=`mktemp fugitiveXXXXXX`
-tmpmod=`mktemp fugitiveXXXXXX`
-tmpdel=`mktemp fugitiveXXXXXX`
+tmpart=`mktemp pangitiveXXXXXX`
+tmpust=`mktemp pangitiveXXXXXX`
+tmpadd=`mktemp pangitiveXXXXXX`
+tmpmod=`mktemp pangitiveXXXXXX`
+tmpdel=`mktemp pangitiveXXXXXX`
 ls "$articles_dir"/* > "$tmpust"
 ls "$pages_dir"/* >> "$tmpust"
 sort "$tmpust" > "$tmpart"

@@ -16,7 +16,7 @@ done
 non_tracked=`git status --porcelain | grep -E '^(A|R)' | grep "$articles_dir\|$pages_dir"`
 
 if [ "$article_exists" = "0" -a "$non_tracked" = "" ]; then
-  echo -n "[fugitive] ERROR: need at least one article (you can use " >&2
+  echo -n "[pangitive] ERROR: need at least one article (you can use " >&2
   echo '`git commit --no-verify` to bypass), aborting.' >&2
   exit 1
 fi
