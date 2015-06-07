@@ -1,7 +1,7 @@
 #!/bin/sh
 
-articles_dir=`git config --get fugitive.articles-dir`
-pages_dir=`git config --get fugitive.pages-dir`
+articles_dir=`git config --get pangitive.articles-dir`
+pages_dir=`git config --get pangitive.pages-dir`
 
 article_exists="0"
 for f in "$articles_dir"/* "$pages_dir"/*; do

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-blog_url=`git config --get fugitive.blog-url`
+blog_url=`git config --get pangitive.blog-url`
 if [ "$blog_url" = "" ]; then
   echo -n "[fugitive] ERROR: git config fugitive.blog-url is empty and" >&2
   echo -n " should not be, please set it with " >&2
