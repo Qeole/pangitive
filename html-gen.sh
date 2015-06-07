@@ -137,7 +137,7 @@ sanit_mail() {
     text="$2"
     noscript_mail="$2"
   else
-    text="'+e+'"
+    text='"+e+"'
     n_ns=`echo "$nn" | sed 's/\./ dot /g'`
     n_ns=`obfuscate_string "$n_ns"`
     a_ns=`obfuscate_string ' at '`
