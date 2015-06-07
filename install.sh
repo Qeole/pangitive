@@ -121,7 +121,7 @@ EOF
 EOF
     echo "done."
     echo -n "Importing files into git repository... "
-    git add _templates/* _public/*.css >/dev/null
+    git add preview _templates/* _public/*.css >/dev/null
     git commit --no-verify -m "pangitive inital import" >/dev/null 2>&1
     echo "done."
     echo "Writing dummy article (README) and adding it to the repos... "
