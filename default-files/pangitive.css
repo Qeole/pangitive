@@ -21,7 +21,6 @@ html, body {
   color: #22427c;
   text-decoration: none;
 }
-#container a:hover, #container a:active { color: #9c3; }
 #container > header {
   margin-top: 0;
   padding: 2em;
