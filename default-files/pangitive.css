@@ -326,6 +326,7 @@ article > div pre {
   color: #ccc;
   font-family: monospace;
   line-height: 2ex;
+  overflow: auto;
 }
 article > div pre code {
   padding: 0;
