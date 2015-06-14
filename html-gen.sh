@@ -343,6 +343,10 @@ generate_article() {
   fi
   if [ "$art" != "" ]; then
     title=`get_article_title "$dir" "$art"`
+    biblio=""
+    if [ "`head \"$1\" | grep '^bibliography: true$'`" != "" ] ; then
+      biblio="--filter pandoc-citeproc"
+    fi
     load_commit_info "-1"
     load_article_info "$dir" "$art"
     $pandoc $pandoc_opt \
@@ -352,6 +356,7 @@ generate_article() {
       --variable=blog-title:"$blog_title" \
       --variable=blog-years:"$blog_years" \
       --template="$templates_dir/article.html" \
+      $biblio \
       "$commit_Hash" \
       "$commit_hash" \
       "$commit_author" \
