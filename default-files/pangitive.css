@@ -290,22 +290,30 @@ article > div code {
 .numberLines {
   background-color: #181b21;
   width: 100%;
+  table-layout: fixed;
 }
 .numberLines pre {
   margin: 0;
-  padding-left: 0;
+  padding-left: .5em;
+}
+.lineNumbers {
+  width: 3em;
+  vertical-align: top;
 }
 .lineNumbers > pre:before {
-  display: none;
+  content: "0";
+  visibility: hidden;
 }
 .lineNumbers > pre {
-  padding: 1.9ex 0 0 1em;
+  padding: 0.5em .5em 0.5em 1em;
+  text-align: right;
   color: #9bf;
   -webkit-user-select: none;
   -khtml-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+  border-right: 1px solid #9bf;
 }
 article > div pre:before {
   display: block;
@@ -326,12 +334,15 @@ article > div pre {
   color: #ccc;
   font-family: monospace;
   line-height: 2ex;
+  font-size: 0.9em;
   overflow: auto;
 }
 article > div pre code {
+  font-size: 1em;
   padding: 0;
   margin: 0;
   color: #eee8d5;
+  text-align: left;
 }
 article > div figure {
   display: block;
