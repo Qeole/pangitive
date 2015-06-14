@@ -111,13 +111,16 @@ get_commit_body() {
 }
 
 # Used with following function to obfuscate emails for bots
-obfuscate_string(){
+convert_to_html() {
+  if [ "$1" = "" ] ; then
+    return
+  fi
   i=1;
   while [ $i -le ${#1} ] ; do
     l=`echo -n "$1" | cut -c$i`
     # pandoc does not do exactly the same here, it has another algorithm to
     # switch between decimal and hexadecimal notation (don't know what it is)
-    if [ $((i/2*2)) -eq $i ] ; then
+    if [ $((i%2)) -eq 0 ] ; then
       printf '&#%d;' \'"$l"
     else
       printf '&#x%x;' \'"$l"
@@ -128,29 +131,36 @@ obfuscate_string(){
 
 # Obfuscate emails, pandoc style (more or less)
 sanit_mail() {
-  nn=`echo $1 | cut -d@ -f1`
-  hh=`echo $1 | cut -d@ -f2`
-  n=`obfuscate_string "$nn"`
+  if [ "$1" = "" -o `echo -n "$1" | sed 's/[^@]//g' | wc -c` -ne 1 ] ; then
+    echo "[preview mode]"
+    return
+  fi
+  name=`echo $1 | cut -d@ -f1`
+  host=`echo $1 | cut -d@ -f2`
+  n=`convert_to_html "$name"`
   a='&#64;'
-  h=`obfuscate_string "$hh"`
+  h=`convert_to_html "$host"`
+
+  n_ns=`echo "$name" | sed 's/\./ dot /g'`
+  n_ns=`convert_to_html "$n_ns"`
+  a_ns=`convert_to_html ' at '`
+  h_ns=`echo "$host" | sed 's/\./ dot /g'`
+  h_ns=`convert_to_html "$h_ns"`
+
   if [ "$2" != "" ] ; then
-    text="$2"
-    noscript_mail="$2"
+    text="'$2'"
+    noscript_mail="`convert_to_html \"$2\"`&#32;&#x28;$n_ns$a_ns$h_ns&#x29;"
   else
-    text='"+e+"'
-    n_ns=`echo "$nn" | sed 's/\./ dot /g'`
-    n_ns=`obfuscate_string "$n_ns"`
-    a_ns=`obfuscate_string ' at '`
-    h_ns=`echo "$hh" | sed 's/\./ dot /g'`
-    h_ns=`obfuscate_string "$h_ns"`
+    text="e"
     noscript_mail="$n_ns$a_ns$h_ns"
   fi
+
   echo '<script type="text/javascript">'
   echo '<!--'
-  echo 'h="'$h'";a="'$a'";n="'$n'";e=n+a+h;'
-  echo 'document.write("<a h"+"ref"+"=\"ma"+"ilto"+":"+e+"\">'$text\
-'<\/"+"a"+">");'
-  echo "// -->"
+  echo "h='"$h"';a='"$a"';n='"$n"';e=n+a+h;"
+  echo "document.write('<a h'+'ref'+'=\"ma'+'ilto'+':'+e+'\">'+\
+"$text"+'<\/'+'a'+'>');"
+  echo '// -->'
   echo "</script><noscript>$noscript_mail</noscript>"
 }
 
@@ -294,15 +304,19 @@ generate_archives() {
       "$article_mdate_time" \
       "$article_mtimestamp" \
       "$article_cauthor" \
-      "$article_cauthor_email" \
       "$article_mauthor" \
-      "$article_mauthor_email" \
       "$article_previous" \
       "$article_previous_title" \
       "$article_next" \
       "$article_next_title"; do
       echo $j | \
         sed "s/--variable=article-\([^:]*\):\(.*\)/    \1: '\2'/" >> "$tmpfile"
+    done
+    for j in \
+      "$article_cauthor_email" \
+      "$article_mauthor_email"; do
+      echo $j | \
+        sed "s/--variable=article-\([^:]*\):\(.*\)/    \1: \2/" >> "$tmpfile"
     done
     if [ "$3" != "" ]; then # If anything provided as third arg, add content
       echo -n "    content: '" >> "$tmpfile"
