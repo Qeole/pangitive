@@ -303,6 +303,7 @@ article > div code {
 .lineNumbers > pre:before {
   content: "0";
   visibility: hidden;
+  counter-increment: code 0;
 }
 .lineNumbers > pre {
   padding: 0.5em .5em 0.5em 1em;
