@@ -13,7 +13,6 @@ html, body {
   padding: 0;
   margin: 0 auto;
   width: 51%;
-  min-width: 480px;
   box-shadow: 1px 2px 20px #111;
 }
 #container header a, #container h1 a, #container h2 a,
@@ -418,7 +417,7 @@ footer p a {
     margin: auto;
   }
   nav, #topnav { font-size: 0.7em; }
-  header { font-size: 0.6em; }
+  header, footer, article footer { font-size: 0.6em; }
 }
 @media screen and (max-device-width:1024px) and (orientation:landscape) {
   #container {
