@@ -197,7 +197,7 @@ article > div p .note:before {
 }
 article > div p .example { counter-increment: example; }
 article > div p .example:before {
-  content: "example " counter(example) ":";
+  content: "example " counter(example) ": ";
   font-variant: small-caps;
 }
 article > div aside {
@@ -363,12 +363,12 @@ article > div figure img {
 }
 article > div figure figcaption:before {
   display: inline;
-  content: "figure " counter(figure) ":";
+  content: "figure " counter(figure) ": ";
   font-variant: small-caps;
 }
 article > div figure.example figcaption:before {
   display: inline;
-  content: "example " counter(example) ":";
+  content: "example " counter(example) ": ";
   font-variant: small-caps;
 }
 article > div .left {
