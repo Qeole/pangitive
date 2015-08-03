@@ -1,18 +1,18 @@
       <nav>
 $if(article-file)$
         <ul class="nav">
-  $if(article-previous)$
+$if(article-previous)$
           <li>
             <a href="$article-previous$.html"
                title="$article-previous-title$">« previous</a>
           </li>
-  $endif$
-  $if(article-next)$
+$endif$
+$if(article-next)$
           <li>
             <a href="$article-next$.html"
                title="$article-next-title$">next »</a>
           </li>
-  $endif$
+$endif$
         </ul>
 $endif$
         <ul>

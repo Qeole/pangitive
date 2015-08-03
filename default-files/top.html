@@ -24,13 +24,15 @@ $if(math)$
 $endif$
     <link rel="contents" href="archives.html">
 $if(article-file)$
-    <link rel="canonical" href="$article$.html">
-  $if(article-previous)$
+$if(article-previous)$
     <link rel="prev" href="$article-previous$.html">
-  $endif$
-  $if(article-next)$
+$endif$
+$if(article-next)$
     <link rel="next" href="$article-next$.html">
-  $endif$
+$endif$
+    <link rel="canonical" href="$blog-url$/$article-file$.html">
+$else$
+    <link rel="canonical" href="$blog-url$/archives.html">
 $endif$
 $for(header-includes)$
     $header-includes$
@@ -44,18 +46,18 @@ $endfor$
       <nav id="topnav">
 $if(article-file)$
         <ul class="nav">
-  $if(article-previous)$
+$if(article-previous)$
           <li>
             <a href="$article-previous$.html"
                title="$article-previous-title$">« previous</a>
           </li>
-  $endif$
-  $if(article-next)$
+$endif$
+$if(article-next)$
           <li>
             <a href="$article-next$.html"
                title="$article-next-title$">next »</a>
           </li>
-  $endif$
+$endif$
         </ul>
 $endif$
         <ul>
