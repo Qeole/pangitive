@@ -140,6 +140,8 @@ article > div a {
 }
 article > div a:hover, article > div a:active { text-decoration: underline; }
 article > div a:visited { color: #7c5d21; }
+article > div pre a { color: #eee8d5; }
+article > div pre a:visited { color: #7c5d21; }
 article > div h1 {
   margin: 1em 0.714em 0.5em 0.714em;  /* 1em/1.4 */
   font-size: 1.4em;

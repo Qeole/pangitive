@@ -280,7 +280,7 @@ load_article_info() {
 
 # Processing body of the article, without any template
 get_article_content() {
-  $pandoc --smart --from=markdown --to=html "$1" | tr '\n' ' '
+  $pandoc -f markdown+smart --from=markdown --to=html "$1" | tr '\n' ' '
 }
 
 generate_archives() {

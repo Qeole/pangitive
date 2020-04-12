@@ -61,7 +61,7 @@ pangitive_install_config() {
   git config --add pangitive.pages-dir "_pages"
   git config --add pangitive.public-dir "_public"
   git config --add pangitive.pandoc "`which pandoc`"
-  git config --add pangitive.pandoc-options "--from=markdown --to=html5 --smart --css=pangitive.css --number-sections"
+  git config --add pangitive.pandoc-options "--from=markdown --to=html5 -f markdown+smart --css=pangitive.css --number-sections"
   echo "done."
 }
 

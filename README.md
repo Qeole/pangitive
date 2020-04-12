@@ -101,7 +101,7 @@ It is filled by default with the result of `which pandoc` command.<br />
 **pandoc-options**<br />
 Options to provide to pandoc to generate HTML files.
 Default value is:<br />
-`--from=markdown --to=html5 --smart --css=pangitive.css --number-sections`<br />
+`--from=markdown --to=html5 -f markdown+smart --css=pangitive.css --number-sections`<br />
 Of course you can change it.
 Of course you should read pandoc documentation.
 
